@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { format, addDays, subDays } from "date-fns";
 import type { JiraTask } from "@/types/jira";
@@ -8,6 +8,11 @@ import { Slider } from "@/components/ui/slider";
 import { TaskBar } from "./TaskBar";
 import { Timeline } from "./Timeline";
 import { fetchJiraEpics, fetchJiraTasks, updateTaskDates } from "@/lib/jira-api";
+import {
+  ResizablePanel,
+  ResizablePanelGroup,
+  ResizableHandle,
+} from "@/components/ui/resizable";
 
 export function GanttChart() {
   const [dateRange, setDateRange] = useState({
@@ -15,6 +20,7 @@ export function GanttChart() {
     end: addDays(new Date(), 30),
   });
   const [zoom, setZoom] = useState(1);
+  const [taskOrder, setTaskOrder] = useState<Record<number, number>>({});
 
   const queryClient = useQueryClient();
 
@@ -27,6 +33,27 @@ export function GanttChart() {
     queryKey: ["tasks"],
     queryFn: () => fetchJiraTasks(),
   });
+
+  useEffect(() => {
+    if (tasks && tasks.length > 0) {
+      const initialOrder: Record<number, number> = {};
+      const tasksByEpic: Record<number, JiraTask[]> = {};
+      tasks.forEach(task => {
+        if (!tasksByEpic[task.epicId || 0]) {
+          tasksByEpic[task.epicId || 0] = [];
+        }
+        tasksByEpic[task.epicId || 0].push(task);
+      });
+      
+      Object.values(tasksByEpic).forEach(epicTasks => {
+        epicTasks.forEach((task, index) => {
+          initialOrder[task.id] = index;
+        });
+      });
+      
+      setTaskOrder(initialOrder);
+    }
+  }, [tasks]);
 
   const updateTaskMutation = useMutation({
     mutationFn: async (data: { taskId: number, startDate: Date, endDate: Date }) =>
@@ -41,8 +68,8 @@ export function GanttChart() {
   }
 
   return (
-    <Card className="p-4">
-      <div className="flex justify-between mb-4">
+    <Card className="p-4 w-full">
+      <div className="flex justify-between mb-4 sticky top-0 bg-background z-10">
         <div className="flex gap-2">
           <Button
             onClick={() =>
@@ -75,39 +102,113 @@ export function GanttChart() {
         />
       </div>
 
-      <div className="relative overflow-x-auto" style={{ width: `${100 * zoom}%` }}>
-        <Timeline
-          startDate={dateRange.start}
-          endDate={dateRange.end}
-          zoom={zoom}
-        />
-        
-        <div className="mt-8">
-          {epics?.map((epic: { id: number; name: string }) => (
-            <div key={epic.id} className="mb-6">
-              <h3 className="font-medium mb-2">{epic.name}</h3>
-              {tasks
-                ?.filter((task: any) => task.epicId === epic.id)
-                .map((task: any) => (
-                  <TaskBar
-                    key={task.id}
-                    task={task}
-                    startDate={dateRange.start}
-                    endDate={dateRange.end}
-                    zoom={zoom}
-                    onUpdate={(newStart, newEnd) =>
-                      updateTaskMutation.mutate({
-                        taskId: task.id,
-                        startDate: newStart,
-                        endDate: newEnd,
-                      })
-                    }
-                  />
-                ))}
-            </div>
-          ))}
-        </div>
-      </div>
+      <ResizablePanelGroup
+        direction="horizontal"
+        className="min-h-[200px] rounded-lg border"
+      >
+        <ResizablePanel defaultSize={25} minSize={15} maxSize={50} className="p-3">
+          <div className="h-8" /> {/* Space for timeline */}
+          <div className="mt-8">
+            {epics?.map((epic) => (
+              <div key={epic.id} className="mb-6">
+                <h3 className="font-medium mb-2">{epic.name}</h3>
+                <div className="relative" style={{ minHeight: tasks?.filter(t => t.epicId === epic.id).length * 48 }}>
+                  {tasks
+                    ?.filter((task) => task.epicId === epic.id)
+                    .sort((a, b) => (taskOrder[a.id] || 0) - (taskOrder[b.id] || 0))
+                    .map((task, index) => (
+                      <div
+                        key={task.id}
+                        className="absolute h-12 w-full flex items-center"
+                        style={{ 
+                          top: `${index * 48}px`
+                        }}
+                      >
+                        <div className="truncate text-sm text-muted-foreground">
+                          {task.description || task.name}
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </ResizablePanel>
+
+        <ResizableHandle withHandle />
+
+        {/* Scrollable timeline section */}
+        <ResizablePanel defaultSize={75} className="p-3">
+          <div className="relative overflow-x-auto w-full">
+          <div 
+            style={{ 
+              width: `${Math.max(100, 100 * zoom)}%`,
+              minHeight: '600px'
+            }}
+          >
+          <Timeline
+            startDate={dateRange.start}
+            endDate={dateRange.end}
+            zoom={zoom}
+          />
+          
+          <div className="mt-8">
+            {epics?.map((epic) => (
+              <div key={epic.id} className="mb-6">
+                <div className="relative" style={{ minHeight: tasks?.filter(t => t.epicId === epic.id).length * 48 }}>
+                  {tasks
+                    ?.filter((task) => task.epicId === epic.id)
+                    .sort((a, b) => (taskOrder[a.id] || 0) - (taskOrder[b.id] || 0))
+                    .map((task, index) => (
+                      <TaskBar
+                        key={task.id}
+                        task={task}
+                        startDate={dateRange.start}
+                        endDate={dateRange.end}
+                        zoom={zoom}
+                        index={index}
+                        onUpdate={(newStart, newEnd) =>
+                          updateTaskMutation.mutate({
+                            taskId: task.id,
+                            startDate: newStart,
+                            endDate: newEnd,
+                          })
+                        }
+                        onOrderChange={(newIndex) => {
+                          if (!tasks) return;
+                          
+                          const sortedTasks = [...tasks]
+                            .filter(t => t.epicId === task.epicId)
+                            .sort((a, b) => (taskOrder[a.id] || 0) - (taskOrder[b.id] || 0));
+                          
+                          const currentIndex = sortedTasks.findIndex(t => t.id === task.id);
+                          const maxIndex = sortedTasks.length - 1;
+                          const boundedNewIndex = Math.max(0, Math.min(newIndex, maxIndex));
+                          
+                          if (currentIndex === -1 || currentIndex === boundedNewIndex) return;
+                          
+                          const updatedTasks = [...sortedTasks];
+                          const [movedTask] = updatedTasks.splice(currentIndex, 1);
+                          updatedTasks.splice(boundedNewIndex, 0, movedTask);
+                          
+                          const newOrder = { ...taskOrder };
+                          
+                          updatedTasks.forEach((t, idx) => {
+                            newOrder[t.id] = idx;
+                          });
+                          
+                          setTaskOrder(newOrder);
+                        }}
+                      />
+                    ))}
+                </div>
+              </div>
+            ))}
+          </div>
+          </div>
+          </div>
+        </ResizablePanel>
+      </ResizablePanelGroup>
     </Card>
   );
 }

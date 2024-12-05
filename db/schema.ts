@@ -31,3 +31,15 @@ export type Epic = z.infer<typeof selectEpicSchema>;
 export type Task = z.infer<typeof selectTaskSchema>;
 
 // Task types are kept simple for CSV import functionality
+
+export const jiraSettings = pgTable("jira_settings", {
+  id: integer().primaryKey().generatedAlwaysAsIdentity(),
+  domain: text("domain").notNull(),
+  apiToken: text("api_token").notNull(),
+  email: text("email").notNull()
+});
+
+export const insertJiraSettingsSchema = createInsertSchema(jiraSettings);
+export const selectJiraSettingsSchema = createSelectSchema(jiraSettings);
+
+export type JiraSettings = z.infer<typeof selectJiraSettingsSchema>;
