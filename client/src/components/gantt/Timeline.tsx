@@ -41,7 +41,7 @@ export function Timeline({ startDate, endDate, zoom, today = new Date(), project
   const tickInterval = calculateTickInterval();
 
   return (
-    <div className="relative h-8 border-b overflow-hidden">
+    <div className="relative h-8 border-b">
       <div 
         className="absolute inset-0"
         style={{
@@ -54,14 +54,14 @@ export function Timeline({ startDate, endDate, zoom, today = new Date(), project
             className="absolute border-l border-black/20"
             style={{
               left: `${((today.getTime() - timelineStartTime) / (end.getTime() - timelineStartTime)) * 100}%`,
-              top: '48px', // Position below timeline
-              height: 'calc(100% - 48px)',
-              zIndex: 10,
+              top: '48px', // Start at the first row
+              height: 'calc(100vh - 48px)', // Fill remaining space
+              zIndex: 5,
               pointerEvents: 'none'
             }}
           >
-            <div className="absolute top-4 left-0 transform -translate-x-1/2">
-              <span className="text-xs text-black/60">Today</span>
+            <div className="absolute left-0 transform -translate-x-1/2" style={{ top: '-20px' }}>
+              <span className="text-xs text-black/60 border-b border-black/60">Today</span>
             </div>
           </div>
         )}
@@ -72,14 +72,14 @@ export function Timeline({ startDate, endDate, zoom, today = new Date(), project
             className="absolute border-l border-red-400/40"
             style={{
               left: `${((projectEndDate.getTime() - timelineStartTime) / (end.getTime() - timelineStartTime)) * 100}%`,
-              top: '48px', // Position below timeline
-              height: 'calc(100% - 48px)',
-              zIndex: 10,
+              top: '48px', // Start at the first row
+              height: 'calc(100vh - 48px)', // Fill remaining space
+              zIndex: 5,
               pointerEvents: 'none'
             }}
           >
-            <div className="absolute top-4 left-0 transform -translate-x-1/2">
-              <span className="text-xs text-red-400/80">End</span>
+            <div className="absolute left-0 transform -translate-x-1/2" style={{ top: '-20px' }}>
+              <span className="text-xs text-red-400/80 border-b border-red-400/80">End</span>
             </div>
           </div>
         )}
