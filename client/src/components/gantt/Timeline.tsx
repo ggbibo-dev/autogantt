@@ -85,13 +85,14 @@ export function Timeline({ startDate, endDate, zoom, today = new Date(), project
             }}
             drag="x"
             dragConstraints={{ 
-              left: -((projectEndDate.getTime() - start.getTime()) / (end.getTime() - start.getTime())) * 100,
-              right: ((end.getTime() - projectEndDate.getTime()) / (end.getTime() - start.getTime())) * 100
+              left: 0,
+              right: '100%'
             }}
             dragElastic={0.1}
             dragMomentum={false}
             whileDrag={{
               scale: 1.02,
+              cursor: 'ew-resize',
               transition: { duration: 0.1 }
             }}
             onDragEnd={(e, info) => {
@@ -104,22 +105,18 @@ export function Timeline({ startDate, endDate, zoom, today = new Date(), project
               if (!container || !(container instanceof HTMLElement)) return;
               
               const timelineRect = container.getBoundingClientRect();
-              const totalDays = (end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24);
-              const pixelsPerDay = (timelineRect.width * zoom) / totalDays;
+              const elementRect = element.getBoundingClientRect();
               
-              // Limit the maximum days that can be moved in a single drag
-              const maxDaysMove = 30; // Adjust this value as needed
-              const rawDaysMoved = info.offset.x / pixelsPerDay;
-              const boundedDaysMoved = Math.max(
-                -maxDaysMove,
-                Math.min(maxDaysMove, Math.round(rawDaysMoved))
-              );
+              // Calculate position relative to timeline
+              const relativePosition = (elementRect.left - timelineRect.left) / timelineRect.width;
               
-              const newEndDate = new Date(projectEndDate);
-              newEndDate.setDate(newEndDate.getDate() + boundedDaysMoved);
+              // Convert position to date
+              const timeRange = end.getTime() - start.getTime();
+              const newTime = start.getTime() + (timeRange * relativePosition);
+              const newEndDate = new Date(newTime);
               
-              // Ensure the new end date is within the timeline bounds
-              if (newEndDate >= start && newEndDate <= end) {
+              // Ensure the new end date is within the timeline bounds and not before today
+              if (newEndDate >= start && newEndDate <= end && newEndDate >= today) {
                 onProjectEndDateChange(newEndDate);
               }
             }}
