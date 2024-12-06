@@ -33,18 +33,39 @@ export function TaskBar({
   const timelineStartTime = startDate.getTime();
   const timelineDuration = endDate.getTime() - startDate.getTime();
   
-  const left = `${((taskStartTime - timelineStartTime) / timelineDuration) * 100}%`;
-  const width = `${((taskEndTime - taskStartTime) / timelineDuration) * 100}%`;
+  // Calculate base position and width, ensuring exact date alignment
+  const taskStartDate = new Date(task.startDate);
+  taskStartDate.setHours(0, 0, 0, 0);
+  const taskEndDate = new Date(task.endDate);
+  taskEndDate.setHours(23, 59, 59, 999);
+
+  // Normalize timeline start to midnight
+  const timelineStart = new Date(startDate);
+  timelineStart.setHours(0, 0, 0, 0);
+  const timelineEnd = new Date(endDate);
+  timelineEnd.setHours(23, 59, 59, 999);
+  
+  const position = ((taskStartDate.getTime() - timelineStart.getTime()) / (timelineEnd.getTime() - timelineStart.getTime())) * 100;
+  const width = ((taskEndDate.getTime() - taskStartDate.getTime()) / (timelineEnd.getTime() - timelineStart.getTime())) * 100;
+  
+  // Position relative to container, aligning with timeline grid
+  const left = `${position}%`;
+  const barWidth = `${width}%`;
 
   return (
     <motion.div
       ref={dragRef}
       drag
       dragDirectionLock
-      dragConstraints={false}
+      dragConstraints={{ left: 0, right: 0 }}
       dragTransition={{ bounceStiffness: 600, bounceDamping: 30 }}
       dragMomentum={false}
       dragElastic={0.2}
+      whileDrag={{
+        scale: 1.02,
+        boxShadow: "0 8px 16px rgba(0, 0, 0, 0.12)",
+        cursor: "grabbing"
+      }}
       onDragStart={() => setIsDragging(true)}
       onDragEnd={(event, info) => {
         setIsDragging(false);
@@ -81,7 +102,7 @@ export function TaskBar({
       className="absolute h-10 cursor-move"
       style={{ 
         left,
-        width,
+        width: barWidth,
         top: 0,
         position: 'absolute',
         zIndex: isDragging ? 50 : 1
@@ -97,15 +118,15 @@ export function TaskBar({
       }}
     >
       <Card
-        className={`h-full px-2 py-1 text-sm flex items-center justify-center ${
+        className={`h-full px-2 py-1 text-sm flex items-center justify-center cursor-grab active:cursor-grabbing hover:ring-2 hover:ring-offset-1 hover:ring-primary/20 transition-shadow ${
           task.status.toUpperCase() === "DONE"
-            ? "bg-green-100 hover:bg-green-200"
+            ? "bg-green-100 hover:bg-green-100/90"
             : task.status.toUpperCase() === "IN PROGRESS"
-            ? "bg-blue-100 hover:bg-blue-200"
+            ? "bg-blue-100 hover:bg-blue-100/90"
             : task.status.toUpperCase() === "BLOCKED"
-            ? "bg-red-100 hover:bg-red-200"
-            : "bg-gray-100 hover:bg-gray-200"
-        }`}
+            ? "bg-red-100 hover:bg-red-100/90"
+            : "bg-gray-100 hover:bg-gray-100/90"
+        } ${isDragging ? 'ring-2 ring-primary/30 ring-offset-2 shadow-lg' : ''}`}
       >
         <span className="text-xs text-muted-foreground whitespace-nowrap">
           {format(new Date(task.startDate), "MMM d")} - {format(new Date(task.endDate), "MMM d")}

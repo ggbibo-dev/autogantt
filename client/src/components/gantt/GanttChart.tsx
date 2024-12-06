@@ -104,11 +104,11 @@ export function GanttChart() {
 
       <ResizablePanelGroup
         direction="horizontal"
-        className="min-h-[200px] rounded-lg border"
+        className="min-h-[600px] h-[calc(100vh-200px)] rounded-lg border"
       >
-        <ResizablePanel defaultSize={25} minSize={15} maxSize={50} className="p-3">
+        <ResizablePanel defaultSize={25} minSize={15} maxSize={50} className="p-3 h-full overflow-y-auto">
           <div className="h-8" /> {/* Space for timeline */}
-          <div className="mt-8">
+          <div className="mt-8 min-h-full">
             {epics?.map((epic) => (
               <div key={epic.id} className="mb-6">
                 <h3 className="font-medium mb-2">{epic.name}</h3>
@@ -138,23 +138,42 @@ export function GanttChart() {
         <ResizableHandle withHandle />
 
         {/* Scrollable timeline section */}
-        <ResizablePanel defaultSize={75} className="p-3">
-          <div className="relative overflow-x-auto w-full">
-          <div 
-            style={{ 
-              width: `${Math.max(100, 100 * zoom)}%`,
-              minHeight: '600px'
-            }}
-          >
-          <Timeline
-            startDate={dateRange.start}
-            endDate={dateRange.end}
-            zoom={zoom}
-          />
+        <ResizablePanel defaultSize={75} className="p-3 h-full">
+          <div className="relative overflow-auto w-full h-full">
+            <div 
+              style={{ 
+                width: '100%',
+                minHeight: tasks && epics ? Math.max(
+                  600,
+                  epics.reduce((totalHeight, epic) => {
+                    const epicTasks = tasks.filter(t => t.epicId === epic.id).length;
+                    // Account for epic header (24px) + margin (16px) + tasks height
+                    return totalHeight + (epicTasks * 48) + 64; 
+                  }, 48) // Start with initial padding
+                ) : 600,
+                position: 'relative'
+              }}
+            >
+              <div
+                className="absolute inset-0"
+                style={{
+                  width: `${100 * zoom}%`,
+                  transform: `translateX(${(1 - zoom) * 50}%)`,
+                  transformOrigin: 'center'
+                }}
+              >
+          <div className="h-8">
+            <Timeline
+              startDate={dateRange.start}
+              endDate={dateRange.end}
+              zoom={zoom}
+            />
+          </div>
           
           <div className="mt-8">
             {epics?.map((epic) => (
               <div key={epic.id} className="mb-6">
+                <h3 className="font-medium h-8 mb-2 invisible">Spacer</h3>
                 <div className="relative" style={{ minHeight: tasks?.filter(t => t.epicId === epic.id).length * 48 }}>
                   {tasks
                     ?.filter((task) => task.epicId === epic.id)
@@ -204,6 +223,7 @@ export function GanttChart() {
                 </div>
               </div>
             ))}
+          </div>
           </div>
           </div>
           </div>
