@@ -11,8 +11,6 @@ import { useToast } from "@/hooks/use-toast";
 export function Dashboard() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [epicName, setEpicName] = useState("");
-
   const uploadMutation = useMutation({
     mutationFn: async (file: File) => {
       const text = await file.text();
@@ -20,10 +18,7 @@ export function Dashboard() {
       const response = await fetch("/api/upload/csv", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          data: text, 
-          epicName 
-        })
+        body: JSON.stringify({ data: text })
       });
       if (!response.ok) {
         const error = await response.json();
@@ -32,9 +27,10 @@ export function Dashboard() {
       return response.json();
     },
     onSuccess: () => {
+      // Invalidate both epics and tasks queries to refresh the data
       queryClient.invalidateQueries({ queryKey: ["epics"] });
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
       toast({ title: "Successfully imported tasks from CSV" });
-      setEpicName("");
     },
     onError: (error: Error) => {
       toast({ 
@@ -53,17 +49,6 @@ export function Dashboard() {
       return;
     }
     console.log('File selected:', file.name);
-    
-    if (!epicName.trim()) {
-      console.log('Epic name missing');
-      toast({ 
-        title: "Epic name required", 
-        description: "Please enter a name for the epic",
-        variant: "destructive" 
-      });
-      return;
-    }
-    console.log('Starting file upload with epic name:', epicName);
     uploadMutation.mutate(file);
   };
 
@@ -71,17 +56,7 @@ export function Dashboard() {
     <div className="h-screen flex flex-col">
       <Header />
       <main className="flex-1 p-6 overflow-auto">
-        <div className="flex justify-end mb-4 gap-4 items-center">
-          <div className="flex-1 max-w-xs">
-            <Label htmlFor="epicName">Epic Name</Label>
-            <Input
-              id="epicName"
-              value={epicName}
-              onChange={(e) => setEpicName(e.target.value)}
-              placeholder="Enter epic name"
-              className="w-full"
-            />
-          </div>
+        <div className="flex justify-end mb-4">
           <div>
             <input
               type="file"

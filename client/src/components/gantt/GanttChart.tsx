@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { format, addDays, subDays } from "date-fns";
-import type { JiraTask, JiraEpic } from "@/types/jira";
+import type { JiraTask } from "@/types/jira";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
@@ -21,10 +21,11 @@ export function GanttChart() {
   });
   const [zoom, setZoom] = useState(1);
   const [taskOrder, setTaskOrder] = useState<Record<number, number>>({});
+  const [customProjectEndDate, setCustomProjectEndDate] = useState<Date | undefined>();
 
   const queryClient = useQueryClient();
 
-  const { data: epics, isLoading: epicsLoading } = useQuery<JiraEpic[]>({
+  const { data: epics, isLoading: epicsLoading } = useQuery({
     queryKey: ["epics"],
     queryFn: () => fetchJiraEpics(),
   });
@@ -168,10 +169,11 @@ export function GanttChart() {
               endDate={dateRange.end}
               zoom={zoom}
               today={new Date()}
-              projectEndDate={tasks?.reduce((latest: Date | undefined, task) => {
+              projectEndDate={customProjectEndDate || tasks?.reduce((latest: Date | undefined, task) => {
                 const taskEnd = new Date(task.endDate);
-                return latest ? (latest > taskEnd ? latest : taskEnd) : taskEnd;
+                return latest && latest > taskEnd ? latest : taskEnd;
               }, undefined)}
+              onProjectEndDateChange={setCustomProjectEndDate}
             />
           </div>
           

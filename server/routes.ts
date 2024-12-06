@@ -30,18 +30,22 @@ export function registerRoutes(app: Express) {
   // CSV Upload
   app.post("/api/upload/csv", async (req, res) => {
     try {
-      const { data: csvData, epicName } = req.body;
+      const { data: csvData } = req.body;
       
       if (!csvData) {
         return res.status(400).json({ error: "CSV data is required" });
       }
-      
-      if (!epicName) {
-        return res.status(400).json({ error: "Epic name is required" });
-      }
 
-      console.log('Processing CSV upload with epic name:', epicName);
-      console.log('CSV data preview:', csvData.substring(0, 200));
+      // Start a transaction to ensure data consistency
+      await db.transaction(async (tx) => {
+        console.log('Starting transaction - clearing existing tasks');
+        // Delete all existing tasks and epics
+        await tx.delete(tasks);
+        await tx.delete(epics);
+        
+        const epicName = `Imported Tasks ${new Date().toLocaleDateString()}`;
+        console.log('Processing CSV upload with generated epic name:', epicName);
+        console.log('CSV data preview:', csvData.substring(0, 200));
 
       interface CSVRecord {
         Summary?: string;
@@ -148,6 +152,7 @@ export function registerRoutes(app: Express) {
       }
 
       res.json({ success: true, epicId: result.id });
+      }); // End of transaction
     } catch (error) {
       console.error('CSV upload error:', error);
       res.status(500).json({ 

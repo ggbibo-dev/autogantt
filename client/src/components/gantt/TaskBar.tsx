@@ -55,22 +55,16 @@ export function TaskBar({
   return (
     <motion.div
       ref={dragRef}
-      drag="y"
+      drag
       dragDirectionLock
-      dragConstraints={{ top: 0, bottom: 0 }}
-      dragElastic={0.3}
+      dragConstraints={{ left: 0, right: 0 }}
+      dragTransition={{ bounceStiffness: 600, bounceDamping: 30 }}
       dragMomentum={false}
-      dragTransition={{ 
-        bounceStiffness: 300,
-        bounceDamping: 20,
-        power: 0.2
-      }}
+      dragElastic={0.2}
       whileDrag={{
         scale: 1.02,
-        zIndex: 50,
         boxShadow: "0 8px 16px rgba(0, 0, 0, 0.12)",
-        cursor: "grabbing",
-        transition: { duration: 0.1 }
+        cursor: "grabbing"
       }}
       onDragStart={() => setIsDragging(true)}
       onDragEnd={(event, info) => {
@@ -87,37 +81,21 @@ export function TaskBar({
           newEndDate.setDate(newEndDate.getDate() + daysDragged);
           
           onUpdate(newStartDate, newEndDate);
-        } else if (Math.abs(info.offset.y) > 5) {
-          // Handle vertical reordering with improved snapping
+        } else if (Math.abs(info.offset.y) > 10) {
+          // Handle vertical reordering with snapping
           const rowHeight = 48; // Height of each row
           const container = dragRef.current?.parentElement;
-          if (container && dragRef.current) {
+          if (container) {
             const containerRect = container.getBoundingClientRect();
-            const elementRect = dragRef.current.getBoundingClientRect();
-            const scrollTop = container.scrollTop;
-            
-            // Calculate position relative to container including scroll
-            const relativeY = (elementRect.top - containerRect.top) + scrollTop;
-            const newIndex = Math.max(0, Math.round(relativeY / rowHeight));
-            
-            if (newIndex !== index && newIndex >= 0) {
-              // Add haptic feedback if available
-              if (window.navigator.vibrate) {
-                window.navigator.vibrate(50);
-              }
+            const elementRect = dragRef.current?.getBoundingClientRect();
+            if (elementRect) {
+              const relativeY = elementRect.top - containerRect.top;
+              const newIndex = Math.max(0, Math.round(relativeY / rowHeight));
               
-              onOrderChange?.(newIndex);
-            }
-          }
-          
-          // Reset the element's position smoothly
-          if (dragRef.current) {
-            dragRef.current.style.setProperty('transition', 'transform 0.2s ease-out');
-            setTimeout(() => {
-              if (dragRef.current) {
-                dragRef.current.style.setProperty('transition', '');
+              if (newIndex !== index && newIndex >= 0) {
+                onOrderChange?.(newIndex);
               }
-            }, 200);
+            }
           }
         }
       }}
