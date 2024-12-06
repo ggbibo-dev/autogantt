@@ -4,9 +4,11 @@ interface TimelineProps {
   startDate: Date;
   endDate: Date;
   zoom: number;
+  today?: Date;
+  projectEndDate?: Date;
 }
 
-export function Timeline({ startDate, endDate, zoom }: TimelineProps) {
+export function Timeline({ startDate, endDate, zoom, today = new Date(), projectEndDate }: TimelineProps) {
   // Ensure dates start at midnight for exact alignment
   const start = new Date(startDate);
   start.setHours(0, 0, 0, 0);
@@ -22,6 +24,22 @@ export function Timeline({ startDate, endDate, zoom }: TimelineProps) {
   // Ensure timeline grid aligns with task bars
   const timelineStartTime = start.getTime();
 
+  // Calculate tick interval based on zoom level and number of days
+  const calculateTickInterval = () => {
+    const totalDays = days.length;
+    // Reduce max ticks significantly when zoomed out
+    const maxVisibleTicks = Math.max(
+      5,
+      Math.min(
+        15,
+        Math.ceil(10 * zoom)
+      )
+    );
+    return Math.max(1, Math.ceil(totalDays / maxVisibleTicks));
+  };
+
+  const tickInterval = calculateTickInterval();
+
   return (
     <div className="relative h-8 border-b overflow-hidden">
       <div 
@@ -30,8 +48,45 @@ export function Timeline({ startDate, endDate, zoom }: TimelineProps) {
           width: '100%'
         }}
       >
+        {/* Today's line */}
+        {today && (
+          <div
+            className="absolute border-l border-black/20"
+            style={{
+              left: `${((today.getTime() - timelineStartTime) / (end.getTime() - timelineStartTime)) * 100}%`,
+              top: '48px', // Position below timeline
+              height: 'calc(100% - 48px)',
+              zIndex: 10,
+              pointerEvents: 'none'
+            }}
+          >
+            <div className="absolute top-4 left-0 transform -translate-x-1/2">
+              <span className="text-xs text-black/60">Today</span>
+            </div>
+          </div>
+        )}
+        
+        {/* Project end date line */}
+        {projectEndDate && (
+          <div
+            className="absolute border-l border-red-400/40"
+            style={{
+              left: `${((projectEndDate.getTime() - timelineStartTime) / (end.getTime() - timelineStartTime)) * 100}%`,
+              top: '48px', // Position below timeline
+              height: 'calc(100% - 48px)',
+              zIndex: 10,
+              pointerEvents: 'none'
+            }}
+          >
+            <div className="absolute top-4 left-0 transform -translate-x-1/2">
+              <span className="text-xs text-red-400/80">End</span>
+            </div>
+          </div>
+        )}
+
         {days.map((day, index) => {
           const position = (index / days.length) * 100;
+          const showTick = index % tickInterval === 0 || index === 0 || index === days.length - 1;
           
           return (
             <div
@@ -40,17 +95,19 @@ export function Timeline({ startDate, endDate, zoom }: TimelineProps) {
               style={{
                 left: `${position}%`,
                 width: `${baseWidth}%`,
-                borderLeftWidth: position === 0 ? '0px' : '1px' // No left border for first tick
+                borderLeftWidth: position === 0 ? '0px' : showTick ? '1px' : '0px'
               }}
             >
-              <div
-                className="absolute left-0 w-full flex justify-center"
-                style={{
-                  transform: `translateX(-50%)`
-                }}
-              >
-                <span className="text-xs whitespace-nowrap px-2">{format(day, "MMM d")}</span>
-              </div>
+              {showTick && (
+                <div
+                  className="absolute left-0 w-full flex justify-center"
+                  style={{
+                    transform: `translateX(-50%)`
+                  }}
+                >
+                  <span className="text-xs whitespace-nowrap px-2">{format(day, "MMM d")}</span>
+                </div>
+              )}
             </div>
           );
         })}

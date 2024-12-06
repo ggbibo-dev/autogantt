@@ -167,6 +167,11 @@ export function GanttChart() {
               startDate={dateRange.start}
               endDate={dateRange.end}
               zoom={zoom}
+              today={new Date()}
+              projectEndDate={tasks?.reduce((latest, task) => {
+                const taskEnd = new Date(task.endDate);
+                return latest && latest > taskEnd ? latest : taskEnd;
+              }, undefined)}
             />
           </div>
           

@@ -117,21 +117,22 @@ export function TaskBar({
         mass: 0.8
       }}
     >
-      <Card
-        className={`h-full px-2 py-1 text-sm flex items-center justify-center cursor-grab active:cursor-grabbing hover:ring-2 hover:ring-offset-1 hover:ring-primary/20 transition-shadow ${
-          task.status.toUpperCase() === "DONE"
-            ? "bg-green-100 hover:bg-green-100/90"
-            : task.status.toUpperCase() === "IN PROGRESS"
-            ? "bg-blue-100 hover:bg-blue-100/90"
-            : task.status.toUpperCase() === "BLOCKED"
-            ? "bg-red-100 hover:bg-red-100/90"
-            : "bg-gray-100 hover:bg-gray-100/90"
-        } ${isDragging ? 'ring-2 ring-primary/30 ring-offset-2 shadow-lg' : ''}`}
-      >
-        <span className="text-xs text-muted-foreground whitespace-nowrap">
+      <div className="relative flex items-center w-full h-full">
+        <span className="absolute right-full pr-2 text-xs text-muted-foreground whitespace-nowrap">
           {format(new Date(task.startDate), "MMM d")} - {format(new Date(task.endDate), "MMM d")}
         </span>
-      </Card>
+        <Card
+          className={`h-full w-full cursor-grab active:cursor-grabbing hover:ring-2 hover:ring-offset-1 hover:ring-primary/20 transition-shadow ${
+            task.status.toUpperCase() === "DONE"
+              ? "bg-green-100 hover:bg-green-100/90"
+              : task.status.toUpperCase() === "IN PROGRESS"
+              ? "bg-blue-100 hover:bg-blue-100/90"
+              : task.status.toUpperCase() === "BLOCKED"
+              ? "bg-red-100 hover:bg-red-100/90"
+              : "bg-gray-100 hover:bg-gray-100/90"
+          } ${isDragging ? 'ring-2 ring-primary/30 ring-offset-2 shadow-lg' : ''}`}
+        />
+      </div>
     </motion.div>
   );
 }
