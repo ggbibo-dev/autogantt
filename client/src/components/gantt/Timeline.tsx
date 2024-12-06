@@ -98,10 +98,12 @@ export function Timeline({ startDate, endDate, zoom, today = new Date(), project
               if (!onProjectEndDateChange) return;
               
               const element = e.currentTarget as HTMLDivElement;
-              const timeline = element.closest('.relative.h-8');
-              if (!timeline || !(timeline instanceof HTMLElement)) return;
+              if (!element) return;
               
-              const timelineRect = timeline.getBoundingClientRect();
+              const container = element.parentElement?.closest('.relative.h-8');
+              if (!container || !(container instanceof HTMLElement)) return;
+              
+              const timelineRect = container.getBoundingClientRect();
               const totalDays = (end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24);
               const pixelsPerDay = (timelineRect.width * zoom) / totalDays;
               
