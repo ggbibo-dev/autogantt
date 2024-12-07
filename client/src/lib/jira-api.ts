@@ -21,12 +21,18 @@ export async function fetchJiraEpics(): Promise<any> { //Added type any due to t
   return response.json();
 }
 
-export async function fetchJiraTasks(): Promise<any> { //Added type any due to the lack of definition for JiraTask in the provided snippet. Should be replaced with correct type.
+export async function fetchJiraTasks(): Promise<Task[]> {
   const response = await fetch('/api/tasks');
   if (!response.ok) {
     throw new Error('Failed to fetch tasks');
   }
-  return response.json();
+  const tasks: Task[] = await response.json();
+  // Map DB tasks to include JiraTask properties
+  return tasks.map(task => ({
+    ...task,
+    jiraId: '', // Default empty string for non-JIRA tasks
+    metadata: {}, // Default empty object for non-JIRA tasks
+  })) as unknown as Task[];
 }
 
 export async function updateTaskDates(taskId: number, startDate: Date, endDate: Date): Promise<any> { //Added type any due to the lack of return type definition.  Should be replaced with correct type.

@@ -39,12 +39,17 @@ export function GanttChart() {
   useEffect(() => {
     if (tasks && tasks.length > 0) {
       const initialOrder: Record<number, number> = {};
-      const tasksByEpic: Record<number, JiraTask[]> = {};
+      const tasksByEpic: Record<number, Task[]> = {};
       tasks.forEach(task => {
-        if (!tasksByEpic[task.epicId || 0]) {
-          tasksByEpic[task.epicId || 0] = [];
+        const epicId = task.epicId || 0;
+        if (!tasksByEpic[epicId]) {
+          tasksByEpic[epicId] = [];
         }
-        tasksByEpic[task.epicId || 0].push(task);
+        tasksByEpic[epicId].push({
+          ...task,
+          jiraId: '', // Default empty string for non-JIRA tasks
+          metadata: {}, // Default empty object for non-JIRA tasks
+        } as Task & { jiraId: string; metadata: any });
       });
       
       Object.values(tasksByEpic).forEach(epicTasks => {

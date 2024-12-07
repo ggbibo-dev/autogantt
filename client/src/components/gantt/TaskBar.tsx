@@ -2,10 +2,11 @@ import { useRef, useState } from "react";
 import { format } from "date-fns";
 import { motion } from "framer-motion";
 import { Card } from "@/components/ui/card";
-import { JiraTask } from "../../types/jira";
+import type { Task } from "@db/schema";
+import type { JiraTask } from "@/types/jira";
 
 interface TaskBarProps {
-  task: JiraTask;
+  task: Task & Partial<JiraTask>;
   startDate: Date;
   endDate: Date;
   zoom: number;
