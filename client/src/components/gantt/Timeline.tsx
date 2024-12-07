@@ -1,5 +1,6 @@
 import { format, eachDayOfInterval } from "date-fns";
 import { motion } from "framer-motion";
+import { useRef } from "react";
 
 interface TimelineProps {
   startDate: Date;
@@ -11,6 +12,8 @@ interface TimelineProps {
 }
 
 export function Timeline({ startDate, endDate, zoom, today = new Date(), projectEndDate, onProjectEndDateChange }: TimelineProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  
   // Ensure dates start at midnight for exact alignment
   const start = new Date(startDate);
   start.setHours(0, 0, 0, 0);
@@ -48,6 +51,7 @@ export function Timeline({ startDate, endDate, zoom, today = new Date(), project
     <div className="relative h-8 border-b">
       {/* Date labels and ticks */}
       <div 
+        ref={containerRef}
         className="absolute inset-0"
         style={{
           width: '100%'
@@ -86,7 +90,7 @@ export function Timeline({ startDate, endDate, zoom, today = new Date(), project
             drag="x"
             dragConstraints={{ 
               left: 0,
-              right: '100%'
+              right: containerRef.current?.getBoundingClientRect().width || 0
             }}
             dragElastic={0.1}
             dragMomentum={false}
@@ -101,8 +105,8 @@ export function Timeline({ startDate, endDate, zoom, today = new Date(), project
               const element = e.currentTarget as HTMLDivElement;
               if (!element) return;
               
-              const container = element.parentElement?.closest('.relative.h-8');
-              if (!container || !(container instanceof HTMLElement)) return;
+              const container = containerRef.current;
+              if (!container) return;
               
               const timelineRect = container.getBoundingClientRect();
               const elementRect = element.getBoundingClientRect();

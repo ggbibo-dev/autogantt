@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { format, addDays, subDays } from "date-fns";
 import type { JiraTask } from "@/types/jira";
+import type { Epic, Task } from "@db/schema";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
@@ -25,12 +26,12 @@ export function GanttChart() {
 
   const queryClient = useQueryClient();
 
-  const { data: epics, isLoading: epicsLoading } = useQuery({
+  const { data: epics, isLoading: epicsLoading } = useQuery<Epic[]>({
     queryKey: ["epics"],
     queryFn: () => fetchJiraEpics(),
   });
 
-  const { data: tasks, isLoading: tasksLoading } = useQuery<JiraTask[]>({
+  const { data: tasks, isLoading: tasksLoading } = useQuery<Task[]>({
     queryKey: ["tasks"],
     queryFn: () => fetchJiraTasks(),
   });
@@ -110,29 +111,31 @@ export function GanttChart() {
         <ResizablePanel defaultSize={25} minSize={15} maxSize={50} className="p-3 h-full overflow-y-auto">
           <div className="h-8" /> {/* Space for timeline */}
           <div className="mt-8 min-h-full">
-            {epics?.map((epic) => (
-              <div key={epic.id} className="mb-6">
-                <h3 className="font-medium mb-2">{epic.name}</h3>
-                <div className="relative" style={{ minHeight: tasks?.filter(t => t.epicId === epic.id).length * 48 }}>
-                  {tasks
-                    ?.filter((task) => task.epicId === epic.id)
-                    .sort((a, b) => (taskOrder[a.id] || 0) - (taskOrder[b.id] || 0))
-                    .map((task, index) => (
-                      <div
-                        key={task.id}
-                        className="absolute h-12 w-full flex items-center"
-                        style={{ 
-                          top: `${index * 48}px`
-                        }}
-                      >
-                        <div className="truncate text-sm text-muted-foreground">
-                          {task.description || task.name}
+            {epics?.map((epic: Epic) => {
+              const epicTasks = tasks?.filter(t => t.epicId === epic.id) || [];
+              return (
+                <div key={epic.id} className="mb-6">
+                  <h3 className="font-medium mb-2">{epic.name}</h3>
+                  <div className="relative" style={{ minHeight: epicTasks.length * 48 }}>
+                    {epicTasks
+                      .sort((a, b) => (taskOrder[a.id] || 0) - (taskOrder[b.id] || 0))
+                      .map((task, index) => (
+                        <div
+                          key={task.id}
+                          className="absolute h-12 w-full flex items-center"
+                          style={{ 
+                            top: `${index * 48}px`
+                          }}
+                        >
+                          <div className="truncate text-sm text-muted-foreground">
+                            {task.description || task.name}
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      ))}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </ResizablePanel>
 
@@ -146,7 +149,7 @@ export function GanttChart() {
                 width: '100%',
                 minHeight: tasks && epics ? Math.max(
                   600,
-                  epics.reduce((totalHeight, epic) => {
+                  epics.reduce((totalHeight: number, epic: Epic) => {
                     const epicTasks = tasks.filter(t => t.epicId === epic.id).length;
                     // Account for epic header (24px) + margin (16px) + tasks height
                     return totalHeight + (epicTasks * 48) + 64; 
