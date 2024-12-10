@@ -112,17 +112,6 @@ export function GanttChart() {
           <Button
             variant="outline"
             onClick={async () => {
-              const chartElement = document.querySelector('.gantt-chart-content');
-              if (!chartElement) return;
-              
-              const canvas = await html2canvas(chartElement as HTMLElement, {
-                scale: 2, // Higher resolution
-                useCORS: true,
-                backgroundColor: '#ffffff',
-                scrollX: 0,
-                scrollY: 0
-              });
-              
               // Find the earliest start date and latest end date
               const allTasks = tasks || [];
               const startDates = allTasks.map(task => new Date(task.startDate).getTime());
@@ -135,12 +124,38 @@ export function GanttChart() {
                 start: earliestStart,
                 end: latestEnd
               });
-              
-              // Create download link
-              const link = document.createElement('a');
-              link.download = `gantt-chart-${format(new Date(), 'yyyy-MM-dd')}.png`;
-              link.href = canvas.toDataURL('image/png');
-              link.click();
+
+              // Wait for state update to complete
+              await new Promise(resolve => setTimeout(resolve, 100));
+
+              const panelGroup = document.querySelector('.min-h-\\[600px\\]');
+              if (!panelGroup) {
+                console.error('Could not find the chart panel group');
+                return;
+              }
+
+              try {
+                const canvas = await html2canvas(panelGroup as HTMLElement, {
+                  scale: 2, // Higher resolution
+                  useCORS: true,
+                  backgroundColor: '#ffffff',
+                  scrollX: -window.scrollX,
+                  scrollY: -window.scrollY,
+                  windowWidth: panelGroup.scrollWidth,
+                  windowHeight: panelGroup.scrollHeight,
+                  logging: true,
+                  allowTaint: true,
+                  foreignObjectRendering: true
+                });
+                
+                // Create download link
+                const link = document.createElement('a');
+                link.download = `gantt-chart-${format(new Date(), 'yyyy-MM-dd')}.png`;
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+              } catch (error) {
+                console.error('Failed to export chart:', error);
+              }
             }}
           >
             Export Chart
