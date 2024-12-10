@@ -1,4 +1,5 @@
 import { JiraSettings } from "../types/jira";
+import type { Task } from "@db/schema";
 
 export async function syncWithJira(domain: string, apiToken: string, email: string) {
   const response = await fetch('/api/jira/sync', {

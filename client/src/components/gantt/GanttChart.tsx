@@ -228,7 +228,7 @@ export function GanttChart() {
             {(epics || []).map((epic) => (
               <div key={epic.id} className="mb-6">
                 <h3 className="font-medium h-8 mb-2 invisible">Spacer</h3>
-                <div className="relative" style={{ minHeight: tasks?.filter(t => t.epicId === epic.id).length * 48 }}>
+                <div className="relative" style={{ minHeight: (tasks?.filter(t => t.epicId === epic.id)?.length || 0) * 48 }}>
                   {tasks
                     ?.filter((task) => task.epicId === epic.id)
                     .sort((a, b) => (taskOrder[a.id] || 0) - (taskOrder[b.id] || 0))
