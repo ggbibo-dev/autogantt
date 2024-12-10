@@ -104,7 +104,7 @@ export function GanttChart() {
           <Slider
             value={[zoom]}
             onValueChange={(value) => setZoom(value[0])}
-            min={0.5}
+            min={0.1}
             max={2}
             step={0.1}
             className="w-32"
