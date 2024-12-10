@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { format, addDays, subDays } from "date-fns";
+import html2canvas from "html2canvas";
 import type { JiraTask } from "@/types/jira";
 import type { Epic, Task } from "@db/schema";
 import { Card } from "@/components/ui/card";
@@ -99,14 +100,52 @@ export function GanttChart() {
             →
           </Button>
         </div>
-        <Slider
-          value={[zoom]}
-          onValueChange={(value) => setZoom(value[0])}
-          min={0.5}
-          max={2}
-          step={0.1}
-          className="w-32"
-        />
+        <div className="flex items-center gap-4">
+          <Slider
+            value={[zoom]}
+            onValueChange={(value) => setZoom(value[0])}
+            min={0.5}
+            max={2}
+            step={0.1}
+            className="w-32"
+          />
+          <Button
+            variant="outline"
+            onClick={async () => {
+              const chartElement = document.querySelector('.gantt-chart-content');
+              if (!chartElement) return;
+              
+              const canvas = await html2canvas(chartElement as HTMLElement, {
+                scale: 2, // Higher resolution
+                useCORS: true,
+                backgroundColor: '#ffffff',
+                scrollX: 0,
+                scrollY: 0
+              });
+              
+              // Find the earliest start date and latest end date
+              const allTasks = tasks || [];
+              const startDates = allTasks.map(task => new Date(task.startDate).getTime());
+              const endDates = allTasks.map(task => new Date(task.endDate).getTime());
+              const earliestStart = new Date(Math.min(...startDates));
+              const latestEnd = new Date(Math.max(...endDates));
+              
+              // Set the date range to include all tasks
+              setDateRange({
+                start: earliestStart,
+                end: latestEnd
+              });
+              
+              // Create download link
+              const link = document.createElement('a');
+              link.download = `gantt-chart-${format(new Date(), 'yyyy-MM-dd')}.png`;
+              link.href = canvas.toDataURL('image/png');
+              link.click();
+            }}
+          >
+            Export Chart
+          </Button>
+        </div>
       </div>
 
       <ResizablePanelGroup
@@ -116,7 +155,7 @@ export function GanttChart() {
         <ResizablePanel defaultSize={25} minSize={15} maxSize={50} className="p-3 h-full overflow-y-auto">
           <div className="h-8" /> {/* Space for timeline */}
           <div className="mt-8 min-h-full">
-            {epics?.map((epic: Epic) => {
+            {(epics || []).map((epic: Epic) => {
               const epicTasks = tasks?.filter(t => t.epicId === epic.id) || [];
               return (
                 <div key={epic.id} className="mb-6">
@@ -148,7 +187,7 @@ export function GanttChart() {
 
         {/* Scrollable timeline section */}
         <ResizablePanel defaultSize={75} className="p-3 h-full">
-          <div className="relative overflow-auto w-full h-full">
+          <div className="relative overflow-auto w-full h-full gantt-chart-content">
             <div 
               style={{ 
                 width: '100%',
@@ -186,7 +225,7 @@ export function GanttChart() {
           </div>
           
           <div className="mt-8">
-            {epics?.map((epic) => (
+            {(epics || []).map((epic) => (
               <div key={epic.id} className="mb-6">
                 <h3 className="font-medium h-8 mb-2 invisible">Spacer</h3>
                 <div className="relative" style={{ minHeight: tasks?.filter(t => t.epicId === epic.id).length * 48 }}>
