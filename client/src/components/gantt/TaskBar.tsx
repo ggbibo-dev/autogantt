@@ -134,7 +134,7 @@ export function TaskBar({
           } ${isDragging ? 'ring-2 ring-primary/30 ring-offset-2 shadow-lg' : ''}`}
         >
           <div className="text-xs truncate text-muted-foreground">
-            {task.description || task.name}
+            {task.name}
           </div>
         </Card>
       </div>
