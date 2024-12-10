@@ -171,15 +171,8 @@ export function GanttChart() {
                             top: `${index * 48}px`
                           }}
                         >
-                          <div className="space-y-1">
-                            <div className="truncate text-sm font-medium">
-                              {task.name}
-                            </div>
-                            {task.description && (
-                              <div className="truncate text-xs text-muted-foreground">
-                                {task.description}
-                              </div>
-                            )}
+                          <div className="truncate text-sm text-muted-foreground">
+                            {task.description || task.name}
                           </div>
                         </div>
                       ))}

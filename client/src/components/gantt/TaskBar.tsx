@@ -123,7 +123,7 @@ export function TaskBar({
           {format(new Date(task.startDate), "MMM d")} - {format(new Date(task.endDate), "MMM d")}
         </span>
         <Card
-          className={`h-full w-full cursor-grab active:cursor-grabbing hover:ring-2 hover:ring-offset-1 hover:ring-primary/20 transition-shadow p-1 flex flex-col justify-center ${
+          className={`h-full w-full cursor-grab active:cursor-grabbing hover:ring-2 hover:ring-offset-1 hover:ring-primary/20 transition-shadow ${
             task.status.toUpperCase() === "DONE"
               ? "bg-green-100 hover:bg-green-100/90"
               : task.status.toUpperCase() === "IN PROGRESS"
@@ -132,11 +132,7 @@ export function TaskBar({
               ? "bg-red-100 hover:bg-red-100/90"
               : "bg-gray-100 hover:bg-gray-100/90"
           } ${isDragging ? 'ring-2 ring-primary/30 ring-offset-2 shadow-lg' : ''}`}
-        >
-          <div className="text-xs truncate text-muted-foreground">
-            {task.name}
-          </div>
-        </Card>
+        />
       </div>
     </motion.div>
   );
