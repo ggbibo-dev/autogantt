@@ -110,26 +110,14 @@ export function GanttChart() {
           <Slider
             value={[zoom]}
             onValueChange={(value) => {
-              setZoom(value[0])
-              // transform start and end dates
-              const interval = getDaysBetweenDates(dateRange.start, dateRange.end);
-              const ppd = interval/(zoom*100);
-              const delta = ppd * (1 - zoom) * 50;
-              
-              setDateRange({
-                start: subDays(dateRange.start, delta), 
-                end: addDays(dateRange.end, delta),
-              });
-
-              console.log(ppd, delta, zoom)
-
+              setZoom(value[0]);
             }}
             min={0.1}
             max={2}
             step={0.1}
             className="w-32"
           />
-          {/* <Button
+          <Button
             variant="outline"
             onClick={async () => {
               // Find the earliest start date and latest end date
@@ -179,9 +167,9 @@ export function GanttChart() {
             }}
           >
             Export Chart
-          </Button>*/}
+          </Button>
         </div>
-      </div> 
+      </div>
 
       <ResizablePanelGroup
         direction="horizontal"
@@ -220,7 +208,6 @@ export function GanttChart() {
 
         <ResizableHandle withHandle />
 
-        {/* Scrollable timeline section */}
         <ResizablePanel defaultSize={75} className="p-3 h-full">
           <div className="relative overflow-auto w-full h-full gantt-chart-content">
             <div 
@@ -230,98 +217,90 @@ export function GanttChart() {
                   600,
                   epics.reduce((totalHeight: number, epic: Epic) => {
                     const epicTasks = tasks.filter(t => t.epicId === epic.id).length;
-                    // Account for epic header (24px) + margin (16px) + tasks height
-                    return totalHeight + (epicTasks * 48) + 64; 
-                  }, 48) // Start with initial padding
+                    return totalHeight + (epicTasks * 48) + 64;
+                  }, 48)
                 ) : 600,
                 position: 'relative'
               }}
             >
-              <div
-                className="absolute inset-0"
-                style={
-                  {/* {
-                    width: `100%`,
-                    transform: `translateX(${(1 - zoom) * 50}%)`,
-                    transformOrigin: 'center'
-                  } */}
-                }
-              >
-          <div className="h-8">
-            <Timeline
-              startDate={dateRange.start}
-              endDate={dateRange.end}
-              zoom={zoom}
-              today={new Date()}
-              projectEndDate={customProjectEndDate || tasks?.reduce((latest: Date | undefined, task) => {
-                const taskEnd = new Date(task.endDate);
-                return latest && latest > taskEnd ? latest : taskEnd;
-              }, undefined)}
-              onProjectEndDateChange={setCustomProjectEndDate}
-            />
-          </div>
+              <div className="absolute inset-0 overflow-x-auto">
+                <div
+                  style={{
+                    width: `${100 * zoom}%`,
+                    minWidth: "100%",
+                  }}
+                >
+                  <div className="h-8">
+                    <Timeline
+                      startDate={dateRange.start}
+                      endDate={dateRange.end}
+                      zoom={zoom}
+                      today={new Date()}
+                      projectEndDate={customProjectEndDate || tasks?.reduce((latest: Date | undefined, task) => {
+                        const taskEnd = new Date(task.endDate);
+                        return latest && latest > taskEnd ? latest : taskEnd;
+                      }, undefined)}
+                      onProjectEndDateChange={setCustomProjectEndDate}
+                    />
+                  </div>
 
-                
-          <div className="mt-8" style={{
-              width: `${100 * zoom}%`,
-              minWidth: "100%",
-              position: "relative"
-            }}>
-            {(epics || []).map((epic) => (
-              <div key={epic.id} className="mb-6">
-                <h3 className="font-medium h-8 mb-2 invisible">Spacer</h3>
-                <div className="relative" style={{ minHeight: (tasks?.filter(t => t.epicId === epic.id)?.length || 0) * 48 }}>
-                  {tasks
-                    ?.filter((task) => task.epicId === epic.id)
-                    .sort((a, b) => (taskOrder[a.id] || 0) - (taskOrder[b.id] || 0))
-                    .map((task, index) => (
-                      <TaskBar
-                        key={task.id}
-                        task={task}
-                        startDate={dateRange.start}
-                        endDate={dateRange.end}
-                        zoom={zoom}
-                        index={index}
-                        onUpdate={(newStart, newEnd) =>
-                          updateTaskMutation.mutate({
-                            taskId: task.id,
-                            startDate: newStart,
-                            endDate: newEnd,
-                          })
-                        }
-                        onOrderChange={(newIndex) => {
-                          if (!tasks) return;
-                          
-                          const sortedTasks = [...tasks]
-                            .filter(t => t.epicId === task.epicId)
-                            .sort((a, b) => (taskOrder[a.id] || 0) - (taskOrder[b.id] || 0));
-                          
-                          const currentIndex = sortedTasks.findIndex(t => t.id === task.id);
-                          const maxIndex = sortedTasks.length - 1;
-                          const boundedNewIndex = Math.max(0, Math.min(newIndex, maxIndex));
-                          
-                          if (currentIndex === -1 || currentIndex === boundedNewIndex) return;
-                          
-                          const updatedTasks = [...sortedTasks];
-                          const [movedTask] = updatedTasks.splice(currentIndex, 1);
-                          updatedTasks.splice(boundedNewIndex, 0, movedTask);
-                          
-                          const newOrder = { ...taskOrder };
-                          
-                          updatedTasks.forEach((t, idx) => {
-                            newOrder[t.id] = idx;
-                          });
-                          
-                          setTaskOrder(newOrder);
-                        }}
-                      />
+                  <div className="mt-8">
+                    {(epics || []).map((epic) => (
+                      <div key={epic.id} className="mb-6">
+                        <h3 className="font-medium h-8 mb-2 invisible">Spacer</h3>
+                        <div className="relative" style={{ minHeight: (tasks?.filter(t => t.epicId === epic.id)?.length || 0) * 48 }}>
+                          {tasks
+                            ?.filter((task) => task.epicId === epic.id)
+                            .sort((a, b) => (taskOrder[a.id] || 0) - (taskOrder[b.id] || 0))
+                            .map((task, index) => (
+                              <TaskBar
+                                key={task.id}
+                                task={task}
+                                startDate={dateRange.start}
+                                endDate={dateRange.end}
+                                zoom={zoom}
+                                index={index}
+                                onUpdate={(newStart, newEnd) =>
+                                  updateTaskMutation.mutate({
+                                    taskId: task.id,
+                                    startDate: newStart,
+                                    endDate: newEnd,
+                                  })
+                                }
+                                onOrderChange={(newIndex) => {
+                                  if (!tasks) return;
+                                  
+                                  const sortedTasks = [...tasks]
+                                    .filter(t => t.epicId === task.epicId)
+                                    .sort((a, b) => (taskOrder[a.id] || 0) - (taskOrder[b.id] || 0));
+                                  
+                                  const currentIndex = sortedTasks.findIndex(t => t.id === task.id);
+                                  const maxIndex = sortedTasks.length - 1;
+                                  const boundedNewIndex = Math.max(0, Math.min(newIndex, maxIndex));
+                                  
+                                  if (currentIndex === -1 || currentIndex === boundedNewIndex) return;
+                                  
+                                  const updatedTasks = [...sortedTasks];
+                                  const [movedTask] = updatedTasks.splice(currentIndex, 1);
+                                  updatedTasks.splice(boundedNewIndex, 0, movedTask);
+                                  
+                                  const newOrder = { ...taskOrder };
+                                  
+                                  updatedTasks.forEach((t, idx) => {
+                                    newOrder[t.id] = idx;
+                                  });
+                                  
+                                  setTaskOrder(newOrder);
+                                }}
+                              />
+                            ))}
+                        </div>
+                      </div>
                     ))}
+                  </div>
                 </div>
               </div>
-            ))}
-          </div>
-          </div>
-          </div>
+            </div>
           </div>
         </ResizablePanel>
       </ResizablePanelGroup>

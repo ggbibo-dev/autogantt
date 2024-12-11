@@ -1,7 +1,6 @@
 import { format, eachDayOfInterval } from "date-fns";
 import { motion } from "framer-motion";
 import { useRef } from "react";
-import { useState} from "react";
 
 interface TimelineProps {
   startDate: Date;
@@ -27,20 +26,12 @@ export function Timeline({
   onProjectEndDateChange,
 }: TimelineProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  
 
   // Ensure dates start at midnight for exact alignment
   const start = new Date(startDate);
   start.setHours(0, 0, 0, 0);
   const end = new Date(endDate);
   end.setHours(23, 59, 59, 999);
-
-  // transform start and end dates
-  // const interval = getDaysBetweenDates(start, end);
-  // const ppd = interval/(zoom*100);
-  // const delta = ppd * (1 - zoom) * 50;
-  // start.setDate(start.getDate() - delta)
-  // end.setDate(end.getDate() + delta)
 
   const days = eachDayOfInterval({ start, end });
 
@@ -58,8 +49,8 @@ export function Timeline({
     const baseTickCount = Math.max(
       5, // Minimum ticks when extremely zoomed out
       Math.min(
-        totalDays, // Never more ticks than days
-        Math.ceil(totalDays * Math.pow(zoom, 0.7)) // Non-linear scaling with zoom
+        20, // Never more ticks than days
+        Math.ceil(totalDays * Math.pow(zoom, 0.2)) // Non-linear scaling with zoom
       )
     );
     
@@ -78,24 +69,25 @@ export function Timeline({
   const tickInterval = calculateTickInterval();
 
   return (
-    <div className="relative h-8 border-b overflow-x-auto">
+    <div className="relative h-8 border-b">
       {/* Date labels and ticks */}
       <div
         ref={containerRef}
         className="absolute inset-0"
         style={{
           width: `${100 * zoom}%`,
-          minWidth: "100%"
+          minWidth: "100%",
+          overflow: "visible"
         }}
       >
-        {/* Today's line - Aligned with content */}
+        {/* Today's line */}
         {today && (
           <div
             className="absolute"
             style={{
-              left: `${((today.getTime() - timelineStartTime) / (end.getTime() - timelineStartTime)) * 100 * zoom}%`,
-              top: "48px", // Align with epic name row
-              height: "calc(100vh - 168px)", // Adjusted height
+              left: `${((today.getTime() - timelineStartTime) / (end.getTime() - timelineStartTime)) * 100}%`,
+              top: "48px",
+              height: "calc(100vh - 168px)",
               zIndex: 5,
               pointerEvents: "none",
             }}
@@ -108,7 +100,7 @@ export function Timeline({
             <div
               className="absolute border-l border-black/20"
               style={{
-                top: "20px", // Start below the label
+                top: "20px",
                 height: "100%",
                 left: "0",
               }}
@@ -116,14 +108,14 @@ export function Timeline({
           </div>
         )}
 
-        {/* Project end date line - Aligned with content */}
+        {/* Project end date line */}
         {projectEndDate && (
           <motion.div
             className="absolute cursor-ew-resize"
             style={{
-              left: `${((new Date(projectEndDate.getTime() + 24 * 60 * 60 * 1000).getTime() - timelineStartTime) / (end.getTime() - timelineStartTime)) * 100 * zoom}%`,
-              top: "48px", // Align with epic name row
-              height: "calc(100vh - 168px)", // Adjusted height
+              left: `${((new Date(projectEndDate.getTime() + 24 * 60 * 60 * 1000).getTime() - timelineStartTime) / (end.getTime() - timelineStartTime)) * 100}%`,
+              top: "48px",
+              height: "calc(100vh - 168px)",
               zIndex: 5,
             }}
             drag="x"
@@ -150,16 +142,13 @@ export function Timeline({
               const timelineRect = container.getBoundingClientRect();
               const elementRect = element.getBoundingClientRect();
 
-              // Calculate position relative to timeline
               const relativePosition =
                 (elementRect.left - timelineRect.left) / timelineRect.width;
 
-              // Convert position to date
               const timeRange = end.getTime() - start.getTime();
               const newTime = start.getTime() + timeRange * relativePosition;
               const newEndDate = new Date(newTime);
 
-              // Ensure the new end date is within the timeline bounds and not before today
               if (
                 newEndDate >= start &&
                 newEndDate <= end &&
@@ -177,7 +166,7 @@ export function Timeline({
             <div
               className="absolute border-l border-red-400/40"
               style={{
-                top: "20px", // Start below the label
+                top: "20px",
                 height: "100%",
                 left: "0",
               }}
@@ -200,18 +189,12 @@ export function Timeline({
               style={{
                 left: `${position}%`,
                 width: `${baseWidth}%`,
-                height: showTick ? "6px" : "0px", // Reduced tick length
-                borderLeftWidth: 0
-                  // position === 0 ? "0px" : showTick ? "1px" : "0px",
+                height: showTick ? "6px" : "0px",
+                borderLeftWidth: showTick ? "1px" : "0px",
               }}
             >
               {showTick && (
-                <div
-                  className="absolute left-0 w-full flex justify-center"
-                  style={{
-                    // transform: `translateX(-50%)`,
-                  }}
-                >
+                <div className="absolute left-0 w-full flex justify-center">
                   <span className="text-xs whitespace-nowrap px-2">
                     {format(day, "MMM d")}
                   </span>
