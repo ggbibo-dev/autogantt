@@ -16,6 +16,12 @@ import {
   ResizableHandle,
 } from "@/components/ui/resizable";
 
+function getDaysBetweenDates(date1: Date, date2: Date): number {
+  const oneDay = 24 * 60 * 60 * 1000; // milliseconds in a day
+  const diffTime = Math.abs(date2.getTime() - date1.getTime());
+  return Math.round(diffTime / oneDay);
+}
+
 export function GanttChart() {
   const [dateRange, setDateRange] = useState({
     start: subDays(new Date(), 7),
@@ -103,13 +109,27 @@ export function GanttChart() {
         <div className="flex items-center gap-4">
           <Slider
             value={[zoom]}
-            onValueChange={(value) => setZoom(value[0])}
+            onValueChange={(value) => {
+              setZoom(value[0])
+              // transform start and end dates
+              const interval = getDaysBetweenDates(dateRange.start, dateRange.end);
+              const ppd = interval/(zoom*100);
+              const delta = ppd * (1 - zoom) * 50;
+              
+              setDateRange({
+                start: subDays(dateRange.start, delta), 
+                end: addDays(dateRange.end, delta),
+              });
+
+              console.log(ppd, delta, zoom)
+
+            }}
             min={0.1}
             max={2}
             step={0.1}
             className="w-32"
           />
-          <Button
+          {/* <Button
             variant="outline"
             onClick={async () => {
               // Find the earliest start date and latest end date
@@ -159,9 +179,9 @@ export function GanttChart() {
             }}
           >
             Export Chart
-          </Button>
+          </Button>*/}
         </div>
-      </div>
+      </div> 
 
       <ResizablePanelGroup
         direction="horizontal"
@@ -219,11 +239,13 @@ export function GanttChart() {
             >
               <div
                 className="absolute inset-0"
-                style={{
-                  width: `${100 * zoom}%`,
-                  transform: `translateX(${(1 - zoom) * 50}%)`,
-                  transformOrigin: 'center'
-                }}
+                style={
+                  {/* {
+                    width: `100%`,
+                    transform: `translateX(${(1 - zoom) * 50}%)`,
+                    transformOrigin: 'center'
+                  } */}
+                }
               >
           <div className="h-8">
             <Timeline
@@ -238,8 +260,13 @@ export function GanttChart() {
               onProjectEndDateChange={setCustomProjectEndDate}
             />
           </div>
-          
-          <div className="mt-8">
+
+                
+          <div className="mt-8" style={{
+              width: `${100 * zoom}%`,
+              minWidth: "100%",
+              position: "relative"
+            }}>
             {(epics || []).map((epic) => (
               <div key={epic.id} className="mb-6">
                 <h3 className="font-medium h-8 mb-2 invisible">Spacer</h3>
