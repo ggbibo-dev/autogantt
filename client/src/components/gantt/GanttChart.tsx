@@ -1,6 +1,17 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { format, addDays, subDays } from "date-fns";
+import {
+  format,
+  addDays,
+  subDays,
+  differenceInDays,
+  differenceInMinutes,
+  addMinutes,
+  subMinutes,
+  differenceInSeconds,
+  addSeconds,
+  subSeconds,
+} from "date-fns";
 import html2canvas from "html2canvas";
 import type { JiraTask } from "@/types/jira";
 import type { Epic, Task } from "@db/schema";
@@ -9,27 +20,32 @@ import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { TaskBar } from "./TaskBar";
 import { Timeline } from "./Timeline";
-import { fetchJiraEpics, fetchJiraTasks, updateTaskDates } from "@/lib/jira-api";
+import {
+  fetchJiraEpics,
+  fetchJiraTasks,
+  updateTaskDates,
+} from "@/lib/jira-api";
 import {
   ResizablePanel,
   ResizablePanelGroup,
   ResizableHandle,
 } from "@/components/ui/resizable";
 
-function getDaysBetweenDates(date1: Date, date2: Date): number {
-  const oneDay = 24 * 60 * 60 * 1000; // milliseconds in a day
-  const diffTime = Math.abs(date2.getTime() - date1.getTime());
-  return Math.round(diffTime / oneDay);
-}
-
 export function GanttChart() {
+  const start = subDays(new Date(), 7);
+  const end = addDays(new Date(), 7);
+  const baseDuration = differenceInSeconds(end, start);
+
   const [dateRange, setDateRange] = useState({
-    start: subDays(new Date(), 7),
-    end: addDays(new Date(), 30),
+    start: start,
+    end: end,
   });
+
   const [zoom, setZoom] = useState(1);
   const [taskOrder, setTaskOrder] = useState<Record<number, number>>({});
-  const [customProjectEndDate, setCustomProjectEndDate] = useState<Date | undefined>();
+  const [customProjectEndDate, setCustomProjectEndDate] = useState<
+    Date | undefined
+  >();
 
   const queryClient = useQueryClient();
 
@@ -47,31 +63,34 @@ export function GanttChart() {
     if (tasks && tasks.length > 0) {
       const initialOrder: Record<number, number> = {};
       const tasksByEpic: Record<number, Task[]> = {};
-      tasks.forEach(task => {
+      tasks.forEach((task) => {
         const epicId = task.epicId || 0;
         if (!tasksByEpic[epicId]) {
           tasksByEpic[epicId] = [];
         }
         tasksByEpic[epicId].push({
           ...task,
-          jiraId: '', // Default empty string for non-JIRA tasks
+          jiraId: "", // Default empty string for non-JIRA tasks
           metadata: {}, // Default empty object for non-JIRA tasks
         } as Task & { jiraId: string; metadata: any });
       });
-      
-      Object.values(tasksByEpic).forEach(epicTasks => {
+
+      Object.values(tasksByEpic).forEach((epicTasks) => {
         epicTasks.forEach((task, index) => {
           initialOrder[task.id] = index;
         });
       });
-      
+
       setTaskOrder(initialOrder);
     }
   }, [tasks]);
 
   const updateTaskMutation = useMutation({
-    mutationFn: async (data: { taskId: number, startDate: Date, endDate: Date }) =>
-      updateTaskDates(data.taskId, data.startDate, data.endDate),
+    mutationFn: async (data: {
+      taskId: number;
+      startDate: Date;
+      endDate: Date;
+    }) => updateTaskDates(data.taskId, data.startDate, data.endDate),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
     },
@@ -88,8 +107,8 @@ export function GanttChart() {
           <Button
             onClick={() =>
               setDateRange({
-                start: subDays(dateRange.start, 7),
-                end: subDays(dateRange.end, 7),
+                start: subDays(dateRange.start, 7 / zoom),
+                end: subDays(dateRange.end, 7 / zoom),
               })
             }
           >
@@ -98,8 +117,8 @@ export function GanttChart() {
           <Button
             onClick={() =>
               setDateRange({
-                start: addDays(dateRange.start, 7),
-                end: addDays(dateRange.end, 7),
+                start: addDays(dateRange.start, 7 / zoom),
+                end: addDays(dateRange.end, 7 / zoom),
               })
             }
           >
@@ -110,7 +129,28 @@ export function GanttChart() {
           <Slider
             value={[zoom]}
             onValueChange={(value) => {
-              setZoom(value[0]);
+              const currZoom = value[0];
+              const originalDuration = differenceInSeconds(
+                dateRange.end,
+                dateRange.start,
+              );
+
+              // Calculate new duration based on zoom
+              const adjustedDuration = baseDuration / currZoom;
+              const centerDate = addSeconds(
+                dateRange.start,
+                originalDuration / 2,
+              );
+
+              const halfAdjustedDuration = adjustedDuration / 2;
+              const newStart = subSeconds(centerDate, halfAdjustedDuration);
+              const newEnd = addSeconds(centerDate, halfAdjustedDuration);
+
+              setDateRange({
+                start: newStart,
+                end: newEnd,
+              });
+              setZoom(currZoom);
             }}
             min={0.1}
             max={2}
@@ -122,23 +162,31 @@ export function GanttChart() {
             onClick={async () => {
               // Find the earliest start date and latest end date
               const allTasks = tasks || [];
-              const startDates = allTasks.map(task => new Date(task.startDate).getTime());
-              const endDates = allTasks.map(task => new Date(task.endDate).getTime());
-              const earliestStart = new Date(Math.min(...startDates));
-              const latestEnd = new Date(Math.max(...endDates));
-              
+              const startDates = allTasks.map((task) =>
+                new Date(task.startDate).getTime(),
+              );
+              const endDates = allTasks.map((task) =>
+                new Date(task.endDate).getTime(),
+              );
+              const minStart = new Date(Math.min(...startDates));
+              const maxEnd = new Date(Math.max(...endDates));
+
+              // add buffer
+              const earliestStart = subDays(minStart, 7);
+              const latestEnd = addDays(maxEnd, 7);
+
               // Set the date range to include all tasks
               setDateRange({
                 start: earliestStart,
-                end: latestEnd
+                end: latestEnd,
               });
 
               // Wait for state update to complete
-              await new Promise(resolve => setTimeout(resolve, 100));
+              await new Promise((resolve) => setTimeout(resolve, 100));
 
-              const panelGroup = document.querySelector('.min-h-\\[600px\\]');
+              const panelGroup = document.querySelector(".min-h-\\[600px\\]");
               if (!panelGroup) {
-                console.error('Could not find the chart panel group');
+                console.error("Could not find the chart panel group");
                 return;
               }
 
@@ -146,23 +194,24 @@ export function GanttChart() {
                 const canvas = await html2canvas(panelGroup as HTMLElement, {
                   scale: 2, // Higher resolution
                   useCORS: true,
-                  backgroundColor: '#ffffff',
-                  scrollX: -window.scrollX,
-                  scrollY: -window.scrollY,
-                  windowWidth: panelGroup.scrollWidth,
-                  windowHeight: panelGroup.scrollHeight,
+                  width: panelGroup.scrollWidth,
+                  height: panelGroup.scrollHeight,
+                  scrollX: panelGroup.scrollLeft,
+                  scrollY: panelGroup.scrollTop,
+                  windowHeight: panelGroup.clientHeight,
+                  windowWidth: panelGroup.clientWidth,
                   logging: true,
-                  allowTaint: true,
-                  foreignObjectRendering: true
+                  allowTaint: false,
+                  foreignObjectRendering: false,
                 });
-                
+
                 // Create download link
-                const link = document.createElement('a');
-                link.download = `gantt-chart-${format(new Date(), 'yyyy-MM-dd')}.png`;
-                link.href = canvas.toDataURL('image/png');
+                const link = document.createElement("a");
+                link.download = `gantt-chart-${format(new Date(), "yyyy-MM-dd")}.png`;
+                link.href = canvas.toDataURL("image/png");
                 link.click();
               } catch (error) {
-                console.error('Failed to export chart:', error);
+                console.error("Failed to export chart:", error);
               }
             }}
           >
@@ -175,23 +224,35 @@ export function GanttChart() {
         direction="horizontal"
         className="min-h-[600px] h-[calc(100vh-200px)] rounded-lg border"
       >
-        <ResizablePanel defaultSize={25} minSize={15} maxSize={50} className="p-3 h-full overflow-y-auto">
+        <ResizablePanel
+          defaultSize={25}
+          minSize={15}
+          maxSize={50}
+          className="p-3 h-full overflow-y-auto"
+        >
           <div className="h-8" /> {/* Space for timeline */}
           <div className="mt-8 min-h-full">
             {(epics || []).map((epic: Epic) => {
-              const epicTasks = tasks?.filter(t => t.epicId === epic.id) || [];
+              const epicTasks =
+                tasks?.filter((t) => t.epicId === epic.id) || [];
               return (
                 <div key={epic.id} className="mb-6">
                   <h3 className="font-medium mb-2">{epic.name}</h3>
-                  <div className="relative" style={{ minHeight: epicTasks.length * 48 }}>
+                  <div
+                    className="relative"
+                    style={{ minHeight: epicTasks.length * 48 }}
+                  >
                     {epicTasks
-                      .sort((a, b) => (taskOrder[a.id] || 0) - (taskOrder[b.id] || 0))
+                      .sort(
+                        (a, b) =>
+                          (taskOrder[a.id] || 0) - (taskOrder[b.id] || 0),
+                      )
                       .map((task, index) => (
                         <div
                           key={task.id}
                           className="absolute h-12 w-full flex items-center"
-                          style={{ 
-                            top: `${index * 48}px`
+                          style={{
+                            top: `${index * 48}px`,
                           }}
                         >
                           <div className="truncate text-sm text-muted-foreground">
@@ -210,25 +271,31 @@ export function GanttChart() {
 
         <ResizablePanel defaultSize={75} className="p-3 h-full">
           <div className="relative overflow-auto w-full h-full gantt-chart-content">
-            <div 
-              style={{ 
-                width: '100%',
-                minHeight: tasks && epics ? Math.max(
-                  600,
-                  epics.reduce((totalHeight: number, epic: Epic) => {
-                    const epicTasks = tasks.filter(t => t.epicId === epic.id).length;
-                    return totalHeight + (epicTasks * 48) + 64;
-                  }, 48)
-                ) : 600,
-                position: 'relative'
+            <div
+              style={{
+                width: "100%",
+                minHeight:
+                  tasks && epics
+                    ? Math.max(
+                        600,
+                        epics.reduce((totalHeight: number, epic: Epic) => {
+                          const epicTasks = tasks.filter(
+                            (t) => t.epicId === epic.id,
+                          ).length;
+                          return totalHeight + epicTasks * 48 + 64;
+                        }, 48),
+                      )
+                    : 600,
+                position: "relative",
               }}
             >
-              <div className="absolute inset-0 overflow-x-auto">
+              <div className="absolute inset-0 overflow-x-hidden">
                 <div
-                  style={{
-                    width: `${100 * zoom}%`,
-                    minWidth: "100%",
-                  }}
+                  style={
+                    {
+                      // width: `${100 * zoom}%`,
+                    }
+                  }
                 >
                   <div className="h-8">
                     <Timeline
@@ -236,10 +303,13 @@ export function GanttChart() {
                       endDate={dateRange.end}
                       zoom={zoom}
                       today={new Date()}
-                      projectEndDate={customProjectEndDate || tasks?.reduce((latest: Date | undefined, task) => {
-                        const taskEnd = new Date(task.endDate);
-                        return latest && latest > taskEnd ? latest : taskEnd;
-                      }, undefined)}
+                      projectEndDate={
+                        customProjectEndDate ||
+                        tasks?.reduce((latest: Date | undefined, task) => {
+                          const taskEnd = new Date(task.endDate);
+                          return latest && latest > taskEnd ? latest : taskEnd;
+                        }, undefined)
+                      }
                       onProjectEndDateChange={setCustomProjectEndDate}
                     />
                   </div>
@@ -247,11 +317,23 @@ export function GanttChart() {
                   <div className="mt-8">
                     {(epics || []).map((epic) => (
                       <div key={epic.id} className="mb-6">
-                        <h3 className="font-medium h-8 mb-2 invisible">Spacer</h3>
-                        <div className="relative" style={{ minHeight: (tasks?.filter(t => t.epicId === epic.id)?.length || 0) * 48 }}>
+                        <h3 className="font-medium h-8 mb-2 invisible">
+                          Spacer
+                        </h3>
+                        <div
+                          className="relative"
+                          style={{
+                            minHeight:
+                              (tasks?.filter((t) => t.epicId === epic.id)
+                                ?.length || 0) * 48,
+                          }}
+                        >
                           {tasks
                             ?.filter((task) => task.epicId === epic.id)
-                            .sort((a, b) => (taskOrder[a.id] || 0) - (taskOrder[b.id] || 0))
+                            .sort(
+                              (a, b) =>
+                                (taskOrder[a.id] || 0) - (taskOrder[b.id] || 0),
+                            )
                             .map((task, index) => (
                               <TaskBar
                                 key={task.id}
@@ -269,27 +351,47 @@ export function GanttChart() {
                                 }
                                 onOrderChange={(newIndex) => {
                                   if (!tasks) return;
-                                  
+
                                   const sortedTasks = [...tasks]
-                                    .filter(t => t.epicId === task.epicId)
-                                    .sort((a, b) => (taskOrder[a.id] || 0) - (taskOrder[b.id] || 0));
-                                  
-                                  const currentIndex = sortedTasks.findIndex(t => t.id === task.id);
+                                    .filter((t) => t.epicId === task.epicId)
+                                    .sort(
+                                      (a, b) =>
+                                        (taskOrder[a.id] || 0) -
+                                        (taskOrder[b.id] || 0),
+                                    );
+
+                                  const currentIndex = sortedTasks.findIndex(
+                                    (t) => t.id === task.id,
+                                  );
                                   const maxIndex = sortedTasks.length - 1;
-                                  const boundedNewIndex = Math.max(0, Math.min(newIndex, maxIndex));
-                                  
-                                  if (currentIndex === -1 || currentIndex === boundedNewIndex) return;
-                                  
+                                  const boundedNewIndex = Math.max(
+                                    0,
+                                    Math.min(newIndex, maxIndex),
+                                  );
+
+                                  if (
+                                    currentIndex === -1 ||
+                                    currentIndex === boundedNewIndex
+                                  )
+                                    return;
+
                                   const updatedTasks = [...sortedTasks];
-                                  const [movedTask] = updatedTasks.splice(currentIndex, 1);
-                                  updatedTasks.splice(boundedNewIndex, 0, movedTask);
-                                  
+                                  const [movedTask] = updatedTasks.splice(
+                                    currentIndex,
+                                    1,
+                                  );
+                                  updatedTasks.splice(
+                                    boundedNewIndex,
+                                    0,
+                                    movedTask,
+                                  );
+
                                   const newOrder = { ...taskOrder };
-                                  
+
                                   updatedTasks.forEach((t, idx) => {
                                     newOrder[t.id] = idx;
                                   });
-                                  
+
                                   setTaskOrder(newOrder);
                                 }}
                               />

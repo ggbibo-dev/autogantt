@@ -1,4 +1,4 @@
-import { format, eachDayOfInterval } from "date-fns";
+import { format, differenceInSeconds, addSeconds } from "date-fns";
 import { motion } from "framer-motion";
 import { useRef } from "react";
 
@@ -9,12 +9,6 @@ interface TimelineProps {
   today?: Date;
   projectEndDate?: Date;
   onProjectEndDateChange?: (newDate: Date) => void;
-}
-
-function getDaysBetweenDates(date1: Date, date2: Date): number {
-  const oneDay = 24 * 60 * 60 * 1000; // milliseconds in a day
-  const diffTime = Math.abs(date2.getTime() - date1.getTime());
-  return Math.round(diffTime / oneDay);
 }
 
 export function Timeline({
@@ -29,44 +23,35 @@ export function Timeline({
 
   // Ensure dates start at midnight for exact alignment
   const start = new Date(startDate);
-  start.setHours(0, 0, 0, 0);
+  // start.setHours(0, 0, 0, 0);
   const end = new Date(endDate);
-  end.setHours(23, 59, 59, 999);
+  // end.setHours(23, 59, 59, 999);
 
-  const days = eachDayOfInterval({ start, end });
+  const totalDuration = differenceInSeconds(end, start);
+
+  // calculate number of labels
+  const tickCount = Math.max(
+    5, // Minimum ticks when extremely zoomed out
+    Math.min(
+      15, // Never more ticks than days
+      Math.ceil(15 * zoom), // Non-linear scaling with zoom
+    ),
+  );
 
   // Calculate base width for exact day intervals
-  const baseWidth = (1 / days.length) * 100;
-  const scaledWidth = baseWidth * zoom;
+  const baseWidth = (1 / tickCount) * 100;
+
+  const minPerStep = totalDuration / tickCount;
+  // create an array which starts at start and each element increments by minPerStep
+  const steps = Array.from({ length: tickCount }, (_, i) =>
+    addSeconds(start, i * minPerStep + minPerStep/2),
+  );
+
+  // const step = Math.max(1, Math.floor((days.length - 1) / (tickCount)));
+  // const filteredDays = days.filter((_, index) => index % step === 0);
 
   // Ensure timeline grid aligns with task bars
   const timelineStartTime = start.getTime();
-
-  // Calculate tick interval based on zoom level and number of days
-  const calculateTickInterval = () => {
-    const totalDays = days.length;
-    // Base number of ticks inversely proportional to zoom level
-    const baseTickCount = Math.max(
-      5, // Minimum ticks when extremely zoomed out
-      Math.min(
-        20, // Never more ticks than days
-        Math.ceil(totalDays * Math.pow(zoom, 0.2)) // Non-linear scaling with zoom
-      )
-    );
-    
-    // Calculate interval ensuring even distribution
-    const interval = Math.max(1, Math.ceil(totalDays / baseTickCount));
-    
-    // Round to nearest convenient interval (1, 2, 5, 10, etc.)
-    const roundedInterval = interval <= 2 ? interval : 
-                          interval <= 5 ? 5 :
-                          interval <= 10 ? 10 :
-                          Math.ceil(interval / 10) * 10;
-    
-    return roundedInterval;
-  };
-
-  const tickInterval = calculateTickInterval();
 
   return (
     <div className="relative h-8 border-b">
@@ -74,11 +59,13 @@ export function Timeline({
       <div
         ref={containerRef}
         className="absolute inset-0"
-        style={{
-          width: `${100 * zoom}%`,
-          minWidth: "100%",
-          overflow: "visible"
-        }}
+        style={
+          {
+            // width: `${100 * zoom}%`,
+            // minWidth: "100%",
+            // overflow: "visible",
+          }
+        }
       >
         {/* Today's line */}
         {today && (
@@ -175,31 +162,32 @@ export function Timeline({
         )}
 
         {/* Date ticks and labels */}
-        {days.map((day, index) => {
-          const position = (index / days.length) * 100;
-          const showTick =
-            index % tickInterval === 0 ||
-            index === 0 ||
-            index === days.length - 1;
+        {steps.map((day, index) => {
+          const position = baseWidth * index;
+          // const showTick =
+          //   index % tickInterval === 0 ||
+          //   index === 0 ||
+          //   index === days.length - 1;
 
           return (
             <div
               key={index}
-              className="absolute border-l"
+              className="absolute"
               style={{
                 left: `${position}%`,
                 width: `${baseWidth}%`,
-                height: showTick ? "6px" : "0px",
-                borderLeftWidth: showTick ? "1px" : "0px",
+                height: "6px",
+                // transform: "translateX(50%)",
+                // borderLeftWidth: "1px" : "0px",
               }}
             >
-              {showTick && (
-                <div className="absolute left-0 w-full flex justify-center">
-                  <span className="text-xs whitespace-nowrap px-2">
-                    {format(day, "MMM d")}
+              {/*<div className="absolute left-0 w-full flex justify-center">*/}
+              <div className="absolute w-full flex justify-center">
+                  <span className="text-xs whitespace-nowrap">
+                    {format(day, "MMM dd HH:mm")}
                   </span>
-                </div>
-              )}
+              </div>
+              <div className="h-5 w-px bg-gray-400"></div>
             </div>
           );
         })}
