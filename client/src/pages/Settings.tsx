@@ -52,7 +52,7 @@ export function Settings() {
   });
 
   return (
-    <div className="container max-w-2xl py-10">
+    <div className="container max-w-2xl mx-auto my-auto" >
       <Card className="p-6">
         <h2 className="text-2xl font-semibold mb-6">JIRA Settings</h2>
         <Form {...form}>
