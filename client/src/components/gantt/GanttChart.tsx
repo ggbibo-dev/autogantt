@@ -101,8 +101,9 @@ export function GanttChart() {
   }
 
   return (
-    <Card className="p-4 w-full">
-      <div className="flex justify-between mb-4 sticky top-0 bg-background z-10">
+    <Card className="relative p-4 w-full bg-slate-300 max-h-[fit-content]">
+      {/* Header with buttons and slider */}
+      <div className="flex justify-between mb-4 sticky top-0 z-10">
         <div className="flex gap-2">
           <Button
             onClick={() =>
@@ -219,193 +220,196 @@ export function GanttChart() {
           </Button>
         </div>
       </div>
-
-      <ResizablePanelGroup
-        direction="horizontal"
-        className="min-h-[600px] h-[calc(100vh-200px)] rounded-lg border"
-      >
-        <ResizablePanel
-          defaultSize={25}
-          minSize={15}
-          maxSize={50}
-          className="p-3 h-full overflow-y-auto"
+      <div className="p-2 overflow-scroll max-h-[600px] rounded-lg border">
+        <ResizablePanelGroup
+          direction="horizontal"
         >
-          <div className="h-8" /> {/* Space for timeline */}
-          <div className="mt-8 min-h-full">
-            {(epics || []).map((epic: Epic) => {
-              const epicTasks =
-                tasks?.filter((t) => t.epicId === epic.id) || [];
-              return (
-                <div key={epic.id} className="mb-6">
-                  <h3 className="font-medium mb-2">{epic.name}</h3>
+          {/* left panel */}
+          <ResizablePanel
+            defaultSize={25}
+            minSize={15}
+            maxSize={50}
+            className="p-3"
+          >
+            <div className="h-8" /> {/* Space for timeline */}
+            <div className="mt-8 min-h-full">
+              {(epics || []).map((epic: Epic) => {
+                const epicTasks =
+                  tasks?.filter((t) => t.epicId === epic.id) || [];
+                return (
+                  <div key={epic.id} className="mb-6">
+                    <h3 className="font-medium mb-2">{epic.name}</h3>
+                    <div
+                      className="relative"
+                      style={{ minHeight: epicTasks.length * 48 }}
+                    >
+                      {epicTasks
+                        .sort(
+                          (a, b) =>
+                            (taskOrder[a.id] || 0) - (taskOrder[b.id] || 0),
+                        )
+                        .map((task, index) => (
+                          <div
+                            key={task.id}
+                            className="absolute h-12 w-full flex items-center"
+                            style={{
+                              top: `${index * 48}px`,
+                            }}
+                          >
+                            <div className="truncate text-sm text-muted-foreground">
+                              {task.description || task.name}
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </ResizablePanel>
+          
+          {/* Resizable handle */}
+          <ResizableHandle withHandle className="h-[600px]"/>
+          
+          {/* taskbars and timeline */}
+          <ResizablePanel defaultSize={75} className="h-full overflow-hidden">
+            <div className="relative w-full h-full gantt-chart-content">
+              <div
+                style={{
+                  width: "100%",
+                  minHeight:
+                    tasks && epics
+                      ? Math.max(
+                          600,
+                          epics.reduce((totalHeight: number, epic: Epic) => {
+                            const epicTasks = tasks.filter(
+                              (t) => t.epicId === epic.id,
+                            ).length;
+                            return totalHeight + epicTasks * 48 + 64;
+                          }, 48),
+                        )
+                      : 600,
+                  position: "relative",
+                }}
+              >
+                <div className="absolute inset-0 overflow-hidden">
                   <div
-                    className="relative"
-                    style={{ minHeight: epicTasks.length * 48 }}
+                    style={
+                      {
+                        // width: `${100 * zoom}%`,
+                      }
+                    }
                   >
-                    {epicTasks
-                      .sort(
-                        (a, b) =>
-                          (taskOrder[a.id] || 0) - (taskOrder[b.id] || 0),
-                      )
-                      .map((task, index) => (
-                        <div
-                          key={task.id}
-                          className="absolute h-12 w-full flex items-center"
-                          style={{
-                            top: `${index * 48}px`,
-                          }}
-                        >
-                          <div className="truncate text-sm text-muted-foreground">
-                            {task.description || task.name}
+                    <div className="h-8 sticky">
+                      <Timeline
+                        startDate={dateRange.start}
+                        endDate={dateRange.end}
+                        zoom={zoom}
+                        today={new Date()}
+                        projectEndDate={
+                          customProjectEndDate ||
+                          tasks?.reduce((latest: Date | undefined, task) => {
+                            const taskEnd = new Date(task.endDate);
+                            return latest && latest > taskEnd ? latest : taskEnd;
+                          }, undefined)
+                        }
+                        onProjectEndDateChange={setCustomProjectEndDate}
+                      />
+                    </div>
+
+                    <div className="mt-8">
+                      {(epics || []).map((epic) => (
+                        <div key={epic.id} className="mb-6">
+                          <h3 className="font-medium h-8 mb-2 invisible">
+                            Spacer
+                          </h3>
+                          <div
+                            className="relative"
+                            style={{
+                              minHeight:
+                                (tasks?.filter((t) => t.epicId === epic.id)
+                                  ?.length || 0) * 48,
+                            }}
+                          >
+                            {tasks
+                              ?.filter((task) => task.epicId === epic.id)
+                              .sort(
+                                (a, b) =>
+                                  (taskOrder[a.id] || 0) - (taskOrder[b.id] || 0),
+                              )
+                              .map((task, index) => (
+                                <TaskBar
+                                  key={task.id}
+                                  task={task}
+                                  startDate={dateRange.start}
+                                  endDate={dateRange.end}
+                                  zoom={zoom}
+                                  index={index}
+                                  onUpdate={(newStart, newEnd) =>
+                                    updateTaskMutation.mutate({
+                                      taskId: task.id,
+                                      startDate: newStart,
+                                      endDate: newEnd,
+                                    })
+                                  }
+                                  onOrderChange={(newIndex) => {
+                                    if (!tasks) return;
+
+                                    const sortedTasks = [...tasks]
+                                      .filter((t) => t.epicId === task.epicId)
+                                      .sort(
+                                        (a, b) =>
+                                          (taskOrder[a.id] || 0) -
+                                          (taskOrder[b.id] || 0),
+                                      );
+
+                                    const currentIndex = sortedTasks.findIndex(
+                                      (t) => t.id === task.id,
+                                    );
+                                    const maxIndex = sortedTasks.length - 1;
+                                    const boundedNewIndex = Math.max(
+                                      0,
+                                      Math.min(newIndex, maxIndex),
+                                    );
+
+                                    if (
+                                      currentIndex === -1 ||
+                                      currentIndex === boundedNewIndex
+                                    )
+                                      return;
+
+                                    const updatedTasks = [...sortedTasks];
+                                    const [movedTask] = updatedTasks.splice(
+                                      currentIndex,
+                                      1,
+                                    );
+                                    updatedTasks.splice(
+                                      boundedNewIndex,
+                                      0,
+                                      movedTask,
+                                    );
+
+                                    const newOrder = { ...taskOrder };
+
+                                    updatedTasks.forEach((t, idx) => {
+                                      newOrder[t.id] = idx;
+                                    });
+
+                                    setTaskOrder(newOrder);
+                                  }}
+                                />
+                              ))}
                           </div>
                         </div>
                       ))}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </ResizablePanel>
-
-        <ResizableHandle withHandle />
-
-        <ResizablePanel defaultSize={75} className="p-3 h-full">
-          <div className="relative overflow-auto w-full h-full gantt-chart-content">
-            <div
-              style={{
-                width: "100%",
-                minHeight:
-                  tasks && epics
-                    ? Math.max(
-                        600,
-                        epics.reduce((totalHeight: number, epic: Epic) => {
-                          const epicTasks = tasks.filter(
-                            (t) => t.epicId === epic.id,
-                          ).length;
-                          return totalHeight + epicTasks * 48 + 64;
-                        }, 48),
-                      )
-                    : 600,
-                position: "relative",
-              }}
-            >
-              <div className="absolute inset-0 overflow-x-hidden">
-                <div
-                  style={
-                    {
-                      // width: `${100 * zoom}%`,
-                    }
-                  }
-                >
-                  <div className="h-8">
-                    <Timeline
-                      startDate={dateRange.start}
-                      endDate={dateRange.end}
-                      zoom={zoom}
-                      today={new Date()}
-                      projectEndDate={
-                        customProjectEndDate ||
-                        tasks?.reduce((latest: Date | undefined, task) => {
-                          const taskEnd = new Date(task.endDate);
-                          return latest && latest > taskEnd ? latest : taskEnd;
-                        }, undefined)
-                      }
-                      onProjectEndDateChange={setCustomProjectEndDate}
-                    />
-                  </div>
-
-                  <div className="mt-8">
-                    {(epics || []).map((epic) => (
-                      <div key={epic.id} className="mb-6">
-                        <h3 className="font-medium h-8 mb-2 invisible">
-                          Spacer
-                        </h3>
-                        <div
-                          className="relative"
-                          style={{
-                            minHeight:
-                              (tasks?.filter((t) => t.epicId === epic.id)
-                                ?.length || 0) * 48,
-                          }}
-                        >
-                          {tasks
-                            ?.filter((task) => task.epicId === epic.id)
-                            .sort(
-                              (a, b) =>
-                                (taskOrder[a.id] || 0) - (taskOrder[b.id] || 0),
-                            )
-                            .map((task, index) => (
-                              <TaskBar
-                                key={task.id}
-                                task={task}
-                                startDate={dateRange.start}
-                                endDate={dateRange.end}
-                                zoom={zoom}
-                                index={index}
-                                onUpdate={(newStart, newEnd) =>
-                                  updateTaskMutation.mutate({
-                                    taskId: task.id,
-                                    startDate: newStart,
-                                    endDate: newEnd,
-                                  })
-                                }
-                                onOrderChange={(newIndex) => {
-                                  if (!tasks) return;
-
-                                  const sortedTasks = [...tasks]
-                                    .filter((t) => t.epicId === task.epicId)
-                                    .sort(
-                                      (a, b) =>
-                                        (taskOrder[a.id] || 0) -
-                                        (taskOrder[b.id] || 0),
-                                    );
-
-                                  const currentIndex = sortedTasks.findIndex(
-                                    (t) => t.id === task.id,
-                                  );
-                                  const maxIndex = sortedTasks.length - 1;
-                                  const boundedNewIndex = Math.max(
-                                    0,
-                                    Math.min(newIndex, maxIndex),
-                                  );
-
-                                  if (
-                                    currentIndex === -1 ||
-                                    currentIndex === boundedNewIndex
-                                  )
-                                    return;
-
-                                  const updatedTasks = [...sortedTasks];
-                                  const [movedTask] = updatedTasks.splice(
-                                    currentIndex,
-                                    1,
-                                  );
-                                  updatedTasks.splice(
-                                    boundedNewIndex,
-                                    0,
-                                    movedTask,
-                                  );
-
-                                  const newOrder = { ...taskOrder };
-
-                                  updatedTasks.forEach((t, idx) => {
-                                    newOrder[t.id] = idx;
-                                  });
-
-                                  setTaskOrder(newOrder);
-                                }}
-                              />
-                            ))}
-                        </div>
-                      </div>
-                    ))}
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
-          </div>
-        </ResizablePanel>
-      </ResizablePanelGroup>
+          </ResizablePanel>
+        </ResizablePanelGroup>
+      </div>
     </Card>
   );
 }
