@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   format,
@@ -30,6 +30,8 @@ import {
   ResizablePanelGroup,
   ResizableHandle,
 } from "@/components/ui/resizable";
+import TargetLines from "./Targetlines";
+import { setuid } from "process";
 
 export function GanttChart() {
   const start = subDays(new Date(), 7);
@@ -96,10 +98,19 @@ export function GanttChart() {
     },
   });
 
+  const rightResizablePanelContainerRef = useRef<HTMLDivElement>(null);
+  
   if (epicsLoading || tasksLoading) {
     return <div>Loading...</div>;
   }
 
+  const projectEndDate = customProjectEndDate ||
+    tasks?.reduce((latest: Date | undefined, task) => {
+      const taskEnd = new Date(task.endDate);
+      return latest && latest > taskEnd ? latest : taskEnd;
+    }, undefined)
+  
+  
   return (
     <Card className="relative p-4 w-full bg-slate-300 max-h-[fit-content]">
       {/* Header with buttons and slider */}
@@ -273,7 +284,8 @@ export function GanttChart() {
           
           {/* taskbars and timeline */}
           <ResizablePanel defaultSize={75} className="h-full overflow-hidden">
-            <div className="relative w-full h-full gantt-chart-content">
+            <div ref={rightResizablePanelContainerRef} className="relative w-full h-full gantt-chart-content">
+              
               <div
                 style={{
                   width: "100%",
@@ -307,14 +319,21 @@ export function GanttChart() {
                         zoom={zoom}
                         today={new Date()}
                         projectEndDate={
-                          customProjectEndDate ||
-                          tasks?.reduce((latest: Date | undefined, task) => {
-                            const taskEnd = new Date(task.endDate);
-                            return latest && latest > taskEnd ? latest : taskEnd;
-                          }, undefined)
+                          projectEndDate
                         }
                         onProjectEndDateChange={setCustomProjectEndDate}
                       />
+                    </div>
+                    
+                    <div className="h-full">
+                      <TargetLines 
+                        maxBoundingWidth={rightResizablePanelContainerRef.current?.clientWidth || 0}
+                        projectEndDate={projectEndDate} 
+                        onProjectEndDateChange={setCustomProjectEndDate}
+                        timelineStartTime={dateRange.start.getTime()}
+                        start={new Date(dateRange.start)} 
+                        end={new Date(dateRange.end)} 
+                        today={new Date()}/>
                     </div>
 
                     <div className="mt-8">
