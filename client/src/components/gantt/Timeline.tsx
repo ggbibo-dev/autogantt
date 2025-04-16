@@ -54,7 +54,7 @@ export function Timeline({
   const timelineStartTime = start.getTime();
 
   return (
-    <div className="relative h-8 border-b">
+    <div className="relative h-8">
       {/* Date labels and ticks */}
       <div
         ref={containerRef}
@@ -67,33 +67,6 @@ export function Timeline({
           }
         }
       >
-        {/* Today's line */}
-        {today && (
-          <div
-            className="absolute"
-            style={{
-              left: `${((today.getTime() - timelineStartTime) / (end.getTime() - timelineStartTime)) * 100}%`,
-              top: "48px",
-              height: "calc(100vh - 168px)",
-              zIndex: 5,
-              pointerEvents: "none",
-            }}
-          >
-            <div className="absolute left-0 transform -translate-x-1/2">
-              <span className="text-xs text-black/60 border-b border-black/60">
-                Today
-              </span>
-            </div>
-            <div
-              className="absolute border-l border-black/20"
-              style={{
-                top: "20px",
-                height: "100%",
-                left: "0",
-              }}
-            />
-          </div>
-        )}
 
         {/* Date ticks and labels */}
         {steps.map((day, index) => {

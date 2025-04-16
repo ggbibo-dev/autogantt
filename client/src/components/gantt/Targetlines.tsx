@@ -28,11 +28,9 @@ const TargetLines: React.FC<TargetLinesProps> = ({
             {projectEndDate && (
                 <motion.div
                     ref={containerRef}
-                    className="absolute cursor-ew-resize h-full"
+                    className="absolute cursor-ew-resize h-full z-[5] -mt-[15px]"
                     style={{
                         left: `${((new Date(projectEndDate.getTime() + 24 * 60 * 60 * 1000).getTime() - timelineStartTime) / (end.getTime() - timelineStartTime)) * 100}%`,
-                        top: "48px",
-                        zIndex: 5,
                     }}
                     drag="x"
                     dragConstraints={{

@@ -99,6 +99,7 @@ export function GanttChart() {
   });
 
   const rightResizablePanelContainerRef = useRef<HTMLDivElement>(null);
+  const [panelWidth, setPanelWidth] = useState<number>(rightResizablePanelContainerRef.current?.clientWidth || 0);
   
   if (epicsLoading || tasksLoading) {
     return <div>Loading...</div>;
@@ -231,7 +232,26 @@ export function GanttChart() {
           </Button>
         </div>
       </div>
-      <div className="p-2 overflow-scroll max-h-[600px] rounded-lg border">
+      
+      <div className="pl-2 rounded-lg ">
+        {/* pl should be total padding on left resizeable panel + width of resizeable handle */}
+        <div className="relative pl-4 h-8 ml-auto justify-end" style={{
+          width: `${panelWidth}%`,
+        }}>
+          <Timeline
+            startDate={dateRange.start}
+            endDate={dateRange.end}
+            zoom={zoom}
+            today={new Date()}
+            projectEndDate={
+              projectEndDate
+            }
+            onProjectEndDateChange={setCustomProjectEndDate}
+          />
+        </div>
+      </div>
+
+      <div className="p-2 overflow-scroll max-h-[550px] rounded-lg border">
         <ResizablePanelGroup
           direction="horizontal"
         >
@@ -242,14 +262,13 @@ export function GanttChart() {
             maxSize={50}
             className="p-3"
           >
-            <div className="h-8" /> {/* Space for timeline */}
-            <div className="mt-8 min-h-full">
+            <div>
               {(epics || []).map((epic: Epic) => {
                 const epicTasks =
                   tasks?.filter((t) => t.epicId === epic.id) || [];
                 return (
-                  <div key={epic.id} className="mb-6">
-                    <h3 className="font-medium mb-2">{epic.name}</h3>
+                  <div key={epic.id}>
+                    <div className="h-3"></div>
                     <div
                       className="relative"
                       style={{ minHeight: epicTasks.length * 48 }}
@@ -283,65 +302,47 @@ export function GanttChart() {
           <ResizableHandle withHandle className="h-[600px]"/>
           
           {/* taskbars and timeline */}
-          <ResizablePanel defaultSize={75} className="h-full overflow-hidden">
-            <div ref={rightResizablePanelContainerRef} className="relative w-full h-full gantt-chart-content">
+          <ResizablePanel 
+            defaultSize={75} 
+            className="overflow-hidden p-3"
+            onResize={(size) => setPanelWidth(size)}
+          >
               
+            <div ref={rightResizablePanelContainerRef} className="relative w-full">
+            <TargetLines 
+              maxBoundingWidth={rightResizablePanelContainerRef.current?.clientWidth || 0}
+              projectEndDate={projectEndDate} 
+              onProjectEndDateChange={setCustomProjectEndDate}
+              timelineStartTime={dateRange.start.getTime()}
+              start={new Date(dateRange.start)} 
+              end={new Date(dateRange.end)} 
+              today={new Date()}/>
+            <div className="relative h-3"></div>
               <div
                 style={{
                   width: "100%",
-                  minHeight:
-                    tasks && epics
-                      ? Math.max(
-                          600,
-                          epics.reduce((totalHeight: number, epic: Epic) => {
-                            const epicTasks = tasks.filter(
-                              (t) => t.epicId === epic.id,
-                            ).length;
-                            return totalHeight + epicTasks * 48 + 64;
-                          }, 48),
-                        )
-                      : 600,
+                  height:
+                  tasks && epics
+                  ? Math.max(
+                    600,
+                    epics.reduce((totalHeight: number, epic: Epic) => {
+                      const epicTasks = tasks.filter(
+                        (t) => t.epicId === epic.id,
+                      ).length;
+                      return totalHeight + epicTasks * 48;
+                    }, 0),
+                  )
+                  : 600,
                   position: "relative",
                 }}
               >
                 <div className="absolute inset-0 overflow-hidden">
-                  <div
-                    style={
-                      {
-                        // width: `${100 * zoom}%`,
-                      }
-                    }
-                  >
-                    <div className="h-8 sticky">
-                      <Timeline
-                        startDate={dateRange.start}
-                        endDate={dateRange.end}
-                        zoom={zoom}
-                        today={new Date()}
-                        projectEndDate={
-                          projectEndDate
-                        }
-                        onProjectEndDateChange={setCustomProjectEndDate}
-                      />
-                    </div>
+                  <div>
                     
-                    <div className="h-full">
-                      <TargetLines 
-                        maxBoundingWidth={rightResizablePanelContainerRef.current?.clientWidth || 0}
-                        projectEndDate={projectEndDate} 
-                        onProjectEndDateChange={setCustomProjectEndDate}
-                        timelineStartTime={dateRange.start.getTime()}
-                        start={new Date(dateRange.start)} 
-                        end={new Date(dateRange.end)} 
-                        today={new Date()}/>
-                    </div>
 
-                    <div className="mt-8">
+                    <div>
                       {(epics || []).map((epic) => (
-                        <div key={epic.id} className="mb-6">
-                          <h3 className="font-medium h-8 mb-2 invisible">
-                            Spacer
-                          </h3>
+                        <div key={epic.id}>
                           <div
                             className="relative"
                             style={{
@@ -350,6 +351,7 @@ export function GanttChart() {
                                   ?.length || 0) * 48,
                             }}
                           >
+                            
                             {tasks
                               ?.filter((task) => task.epicId === epic.id)
                               .sort(
