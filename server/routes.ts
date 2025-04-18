@@ -3,6 +3,7 @@ import { db } from "db";
 import { epics, tasks } from "@db/schema";
 import { eq } from "drizzle-orm";
 import { parse } from "csv-parse/sync";
+import { log } from "console";
 
 export function registerRoutes(app: Express) {
   // Epics
@@ -175,14 +176,46 @@ export function registerRoutes(app: Express) {
   app.put("/api/tasks/:id", async (req, res) => {
     try {
       const { id } = req.params;
+  
+      // Parse and validate date fields
+      const updatedData = { ...req.body };
+      if (updatedData.startDate) {
+        updatedData.startDate = new Date(updatedData.startDate);
+        if (isNaN(updatedData.startDate.getTime())) {
+          return res.status(400).json({ error: "Invalid startDate format" });
+        }
+      }
+      if (updatedData.endDate) {
+        updatedData.endDate = new Date(updatedData.endDate);
+        if (isNaN(updatedData.endDate.getTime())) {
+          return res.status(400).json({ error: "Invalid endDate format" });
+        }
+      }
+  
+      // Update the task in the database
       await db.update(tasks)
-        .set(req.body)
+        .set(updatedData)
         .where(eq(tasks.id, parseInt(id)));
+  
       res.json({ success: true });
     } catch (error) {
+      console.error("Error updating task:", error);
       res.status(500).json({ error: "Failed to update task" });
     }
   });
+  // app.put("/api/tasks/:id", async (req, res) => {
+  //   try {
+  //     const { id } = req.params;
+  //     await db.update(tasks)
+  //       .set(req.body)
+  //       .where(eq(tasks.id, parseInt(id)));
+  //     res.json({ success: true });
+  //   } catch (error) {
+  //     console.error('Error updating task:', error);
+  //     res.status(500).json({ error: "Failed to update task" });
+  //   }
+  // });
+
 
   // End of routes
 }

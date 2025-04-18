@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { format,  differenceInSeconds, min } from "date-fns";
+import { format, differenceInSeconds, min, addDays, setDate } from "date-fns";
 import { formatInTimeZone } from 'date-fns-tz';
 import { motion } from "framer-motion";
 import { Card } from "@/components/ui/card";
@@ -27,16 +27,18 @@ export function TaskBar({
 }: TaskBarProps) {
   const dragRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
-
   const taskStart = new Date(task.startDate)
   taskStart.setHours(0,0,0,0)
   const taskEnd = new Date(task.endDate)
   taskEnd.setHours(12,0,0,0)
-  
-  // const taskStartDate = format(taskStart, "yyyy-MM-dd HH:mm:ss");
+
+  const [start, setTaskStart] = useState(taskStart);
+  const [end, setTaskEnd] = useState(taskEnd);
+
   const taskStartDate = formatInTimeZone(taskStart, 'America/New_York', 'yyyy-MM-dd HH:mm:ssXXX')
   const taskEndDate = formatInTimeZone(taskEnd, 'America/New_York', "yyyy-MM-dd HH:mm:ssXXX");
   const timelineStart = formatInTimeZone(new Date(startDate), 'America/New_York', "yyyy-MM-dd HH:mm:ssXXX");
+  
   const timelineEnd = formatInTimeZone(new Date(endDate), 'America/New_York', "yyyy-MM-dd HH:mm:ssXXX");
   const totalDays = differenceInSeconds(timelineEnd, timelineStart);
 
@@ -45,18 +47,18 @@ export function TaskBar({
 
   const width =
   (differenceInSeconds(min([taskEndDate, timelineEnd]), taskStartDate) / totalDays) * 100;
-  // Position relative to container, aligning with timeline grid
 
   const left = `${position}%`;
-  // when zoomed out, barwidth is too narrow
   const barWidth = `${width}%`;
+
+  const secondsInDay = 86400; // 24 hours * 60 minutes * 60 seconds
 
   return (
     <motion.div
       ref={dragRef}
       drag
       dragDirectionLock
-      dragConstraints={{ left: 0, right: 0 }}
+      dragConstraints={{ left: 0 }}
       dragTransition={{ bounceStiffness: 600, bounceDamping: 30 }}
       dragMomentum={false}
       dragElastic={0.2}
@@ -68,18 +70,24 @@ export function TaskBar({
       onDragStart={() => setIsDragging(true)}
       onDragEnd={(event, info) => {
         setIsDragging(false);
+
         // Handle horizontal movement for timeline updates
         if (Math.abs(info.offset.x) > Math.abs(info.offset.y)) {
-          const dayWidth = (100 / totalDays) * zoom;
+          // Calculate the width of a single day in pixels
+          const timelineWidth = dragRef.current?.parentElement?.offsetWidth || 1; // Total width of the timeline in pixels
+          const dayWidth = timelineWidth / (totalDays / secondsInDay); // Width of a single day in pixels
+
+          // Calculate the number of days dragged
           const daysDragged = Math.round(info.offset.x / dayWidth);
 
-          const newStartDate = new Date(task.startDate);
-          newStartDate.setDate(newStartDate.getDate() + daysDragged);
+          // Update the start and end dates
+          const newStartDate = addDays(new Date(task.startDate), daysDragged);
+          const newEndDate = addDays(new Date(task.endDate), daysDragged);
 
-          const newEndDate = new Date(task.endDate);
-          newEndDate.setDate(newEndDate.getDate() + daysDragged);
+          setTaskStart((p) => addDays(p, daysDragged));
+          setTaskEnd((p) => addDays(p, daysDragged));
 
-          onUpdate(newStartDate, newEndDate);
+          // onUpdate(newStartDate, newEndDate);
         } else if (Math.abs(info.offset.y) > 10) {
           // Handle vertical reordering with snapping
           const rowHeight = 48; // Height of each row
@@ -118,8 +126,8 @@ export function TaskBar({
     >
       <div className="relative flex items-center w-full h-full">
         <span className="absolute right-full pr-2 text-xs text-muted-foreground whitespace-nowrap">
-          {format(new Date(task.startDate), "MMM d")} -{" "}
-          {format(new Date(task.endDate), "MMM d")}
+          {format(start, "MMM d")} -{" "}
+          {format(end, "MMM d")}
         </span>
         <Card
           className={`h-full w-full cursor-grab active:cursor-grabbing hover:ring-2 hover:ring-offset-1 hover:ring-primary/20 transition-shadow ${

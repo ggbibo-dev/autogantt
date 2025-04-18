@@ -37,10 +37,14 @@ export async function fetchJiraTasks(): Promise<Task[]> {
 }
 
 export async function updateTaskDates(taskId: number, startDate: Date, endDate: Date): Promise<any> { //Added type any due to the lack of return type definition.  Should be replaced with correct type.
+  const data = {
+    startDate: startDate,
+    endDate: endDate
+  };
   const response = await fetch(`/api/tasks/${taskId}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ startDate, endDate })
+    body: JSON.stringify(data)
   });
   if (!response.ok) {
     throw new Error('Failed to update task dates');

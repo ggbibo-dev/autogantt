@@ -1,4 +1,4 @@
-import { pgTable, text, integer, timestamp, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text, integer, timestamp, jsonb, serial } from "drizzle-orm/pg-core";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -41,5 +41,18 @@ export const jiraSettings = pgTable("jira_settings", {
 
 export const insertJiraSettingsSchema = createInsertSchema(jiraSettings);
 export const selectJiraSettingsSchema = createSelectSchema(jiraSettings);
-
 export type JiraSettings = z.infer<typeof selectJiraSettingsSchema>;
+
+
+export const editLogs = pgTable("edit_logs", {
+  id: serial("id").primaryKey(), // Auto-incrementing primary key
+  taskId: integer("task_id").notNull().references(() => tasks.id), // Foreign key to tasks table
+  updatedField: text("updated_field").notNull(), // Name of the updated field
+  oldValue: text("old_value"), // Previous value of the field
+  newValue: text("new_value"), // New value of the field
+  updatedAt: timestamp("updated_at").defaultNow().notNull(), // Auto timestamp
+});
+
+export const insertEditLogSchema = createInsertSchema(editLogs);
+export const selectEditLogSchema = createSelectSchema(editLogs);
+export type EditLog = z.infer<typeof selectEditLogSchema>;
