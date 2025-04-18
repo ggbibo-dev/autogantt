@@ -94,7 +94,7 @@ export function GanttChart() {
       endDate: Date;
     }) => updateTaskDates(data.taskId, data.startDate, data.endDate),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      // queryClient.invalidateQueries({ queryKey: ["tasks"] });
     },
   });
 

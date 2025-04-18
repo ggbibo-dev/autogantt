@@ -61,7 +61,9 @@ export function TaskBar({
       dragConstraints={{ left: 0 }}
       dragTransition={{ bounceStiffness: 600, bounceDamping: 30 }}
       dragMomentum={false}
-      dragElastic={0.2}
+      dragElastic={{
+        right: 0
+      }}
       whileDrag={{
         scale: 1.02,
         boxShadow: "0 8px 16px rgba(0, 0, 0, 0.12)",
@@ -81,13 +83,11 @@ export function TaskBar({
           const daysDragged = Math.round(info.offset.x / dayWidth);
 
           // Update the start and end dates
-          const newStartDate = addDays(new Date(task.startDate), daysDragged);
-          const newEndDate = addDays(new Date(task.endDate), daysDragged);
-
           setTaskStart((p) => addDays(p, daysDragged));
           setTaskEnd((p) => addDays(p, daysDragged));
-
-          // onUpdate(newStartDate, newEndDate);
+          
+          // Notes due to batching of state changes, do not use state
+          onUpdate(addDays(start, daysDragged), addDays(end, daysDragged));
         } else if (Math.abs(info.offset.y) > 10) {
           // Handle vertical reordering with snapping
           const rowHeight = 48; // Height of each row
