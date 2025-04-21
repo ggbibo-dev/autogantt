@@ -1,7 +1,7 @@
 import { type Express } from "express";
 import { db } from "db";
-import { epics, tasks } from "@db/schema";
-import { eq } from "drizzle-orm";
+import { editLogs, epics, jiraSettings, tasks } from "@db/schema";
+import { eq, desc } from "drizzle-orm";
 import { parse } from "csv-parse/sync";
 import { log } from "console";
 
@@ -13,6 +13,29 @@ export function registerRoutes(app: Express) {
       res.json(allEpics);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch epics" });
+    }
+  });
+
+  // Settings
+  app.get("/api/settings", async (req, res) => {
+    try {
+      const settings = await db.query.jiraSettings.findMany();
+      res.json(settings);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch settings" });
+    }
+  });
+
+
+  app.put("/api/settings/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      await db.update(jiraSettings)
+        .set(req.body)
+        .where(eq(jiraSettings.id, parseInt(id)));
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update settings" });
     }
   });
 
@@ -166,56 +189,73 @@ export function registerRoutes(app: Express) {
   // Tasks
   app.get("/api/tasks", async (req, res) => {
     try {
-      const allTasks = await db.query.tasks.findMany();
-      res.json(allTasks);
+      // Fetch all tasks from the tasks table
+      const tasksList = await db.query.tasks.findMany();
+
+      // Fetch the latest updates from the edit_logs table for all tasks
+      const editLogsList = await db.select()
+      .from(editLogs)
+      .orderBy(desc(editLogs.updatedAt)); // Order by most recent changes
+
+      // Apply the latest changes to each task
+      const updatedTasks = tasksList.map(task => {
+        const updatedTask = { ...task };
+        const taskLogs = editLogsList.filter(log => log.taskId === task.id);
+
+        for (const log of taskLogs) {
+          if (log.updatedField === "startDate" && log.newValue) {
+          updatedTask.startDate = new Date(log.newValue);
+          }
+          if (log.updatedField === "endDate" && log.newValue) {
+          updatedTask.endDate = new Date(log.newValue);
+          }
+        }
+
+        return updatedTask;
+      });
+
+      // Return the updated tasks
+      res.json(updatedTasks);
+
     } catch (error) {
+      console.error("Error fetching tasks:", error);
       res.status(500).json({ error: "Failed to fetch tasks" });
     }
   });
 
   app.put("/api/tasks/:id", async (req, res) => {
-    try {
-      const { id } = req.params;
-  
-      // Parse and validate date fields
-      const updatedData = { ...req.body };
-      if (updatedData.startDate) {
-        updatedData.startDate = new Date(updatedData.startDate);
-        if (isNaN(updatedData.startDate.getTime())) {
-          return res.status(400).json({ error: "Invalid startDate format" });
-        }
-      }
-      if (updatedData.endDate) {
-        updatedData.endDate = new Date(updatedData.endDate);
-        if (isNaN(updatedData.endDate.getTime())) {
-          return res.status(400).json({ error: "Invalid endDate format" });
-        }
-      }
-  
-      // Update the task in the database
-      await db.update(tasks)
-        .set(updatedData)
-        .where(eq(tasks.id, parseInt(id)));
-  
-      res.json({ success: true });
-    } catch (error) {
-      console.error("Error updating task:", error);
-      res.status(500).json({ error: "Failed to update task" });
+    const { id } = req.params;
+    const { startDate, endDate } = req.body;
+
+    // Fetch the current task
+    const [task] = await db.select().from(tasks).where(eq(tasks.id, parseInt(id)));
+
+    // // Update the task
+    // await db.update(tasks)
+    //   .set({ startDate, endDate })
+    //   .where(eq(tasks.id, id));
+
+    // Log the changes
+    if (task.startDate !== startDate) {
+      await db.insert(editLogs).values({
+        taskId: parseInt(id),
+        updatedField: "startDate",
+        oldValue: task.startDate.toISOString(),
+        newValue: startDate,
+        updatedAt: new Date(),
+      });
     }
+
+    if (task.endDate !== endDate) {
+      await db.insert(editLogs).values({
+        taskId: parseInt(id),
+        updatedField: "endDate",
+        oldValue: task.endDate.toISOString(),
+        newValue: endDate,
+        updatedAt: new Date(),
+      });
+    }
+
+    res.json({ success: true });
   });
-  // app.put("/api/tasks/:id", async (req, res) => {
-  //   try {
-  //     const { id } = req.params;
-  //     await db.update(tasks)
-  //       .set(req.body)
-  //       .where(eq(tasks.id, parseInt(id)));
-  //     res.json({ success: true });
-  //   } catch (error) {
-  //     console.error('Error updating task:', error);
-  //     res.status(500).json({ error: "Failed to update task" });
-  //   }
-  // });
-
-
-  // End of routes
 }
