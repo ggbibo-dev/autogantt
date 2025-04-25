@@ -1,5 +1,5 @@
-import { useRef, useState } from "react";
-import { format, differenceInSeconds, min, addDays, setDate } from "date-fns";
+import { PointerEvent, useRef, useState } from "react";
+import { format, differenceInSeconds, min, addDays, setDate, startOfDay, addSeconds } from "date-fns";
 import { formatInTimeZone } from 'date-fns-tz';
 import { motion } from "framer-motion";
 import { Card } from "@/components/ui/card";
@@ -31,32 +31,85 @@ export function TaskBar({
   taskStart.setHours(0,0,0,0)
   const taskEnd = new Date(task.endDate)
   taskEnd.setHours(12,0,0,0)
-
+  
   const [start, setTaskStart] = useState(taskStart);
   const [end, setTaskEnd] = useState(taskEnd);
 
+  const [isResizing, setIsResizing] = useState(false);
+  
   const taskStartDate = formatInTimeZone(taskStart, 'America/New_York', 'yyyy-MM-dd HH:mm:ssXXX')
   const taskEndDate = formatInTimeZone(taskEnd, 'America/New_York', "yyyy-MM-dd HH:mm:ssXXX");
   const timelineStart = formatInTimeZone(new Date(startDate), 'America/New_York', "yyyy-MM-dd HH:mm:ssXXX");
   
   const timelineEnd = formatInTimeZone(new Date(endDate), 'America/New_York', "yyyy-MM-dd HH:mm:ssXXX");
   const totalDays = differenceInSeconds(timelineEnd, timelineStart);
-
+  
   const position =
-    (differenceInSeconds(taskStartDate, timelineStart) / totalDays) * 100;
-
+  (differenceInSeconds(start, timelineStart) / totalDays) * 100;
+  
   const width =
-  (differenceInSeconds(min([taskEndDate, timelineEnd]), taskStartDate) / totalDays) * 100;
-
+  (differenceInSeconds(min([end, timelineEnd]), taskStartDate) / totalDays) * 100;
+  
   const left = `${position}%`;
   const barWidth = `${width}%`;
-
+  
   const secondsInDay = 86400; // 24 hours * 60 minutes * 60 seconds
+  
+  function handleResizeStart(e: PointerEvent<HTMLDivElement>, direction: "left" | "right"): void {
+  
+    const initialX = e.clientX;
+    const initialStart = start;
+    const initialEnd = end;
+  
+    function onMouseMove(event: MouseEvent) {
+      const deltaX = event.clientX - initialX;
+      const timelineWidth = dragRef.current?.parentElement?.offsetWidth || 1;
+      const dayWidth = timelineWidth / (totalDays / secondsInDay);
+      const daysDragged = deltaX / dayWidth;
+  
+      if (direction === "left") {
+        const newStart = addSeconds(initialStart, daysDragged * secondsInDay);
+        if (newStart < initialEnd) {
+          setTaskStart(newStart);
+          
+          // onUpdate(newStart, initialEnd);
+        }
+      } else if (direction === "right") {
+        const newEnd = addSeconds(initialEnd, daysDragged * secondsInDay);
+        if (newEnd > initialStart) {
+          setTaskEnd(newEnd);
+          // onUpdate(initialStart, newEnd);
+        }
+      }
+    }
+
+    function onMouseDown(event: MouseEvent) {
+      e.stopPropagation();
+      setIsResizing(true);
+      // e.preventDefault();
+      console.log("mouse down")
+    }
+
+    function onMouseUp() {
+      document.removeEventListener("mousemove", onMouseMove);
+      document.removeEventListener("mouseup", onMouseUp);
+      document.removeEventListener("mousedown", onMouseDown);
+
+      console.log("mouse up")
+      
+      setIsResizing(false);
+    }
+
+    document.addEventListener("mousemove", onMouseMove);
+    document.addEventListener("mouseup", onMouseUp);
+    document.addEventListener("mousedown", onMouseDown);
+    
+  }
 
   return (
     <motion.div
       ref={dragRef}
-      drag
+      drag={!isResizing}
       dragDirectionLock
       dragConstraints={{ left: 0 }}
       dragTransition={{ bounceStiffness: 600, bounceDamping: 30 }}
@@ -67,10 +120,11 @@ export function TaskBar({
       whileDrag={{
         scale: 1.02,
         boxShadow: "0 8px 16px rgba(0, 0, 0, 0.12)",
-        cursor: "grabbing",
+        cursor: isResizing ? "ew-resize" : "grabbing",
       }}
-      onDragStart={() => setIsDragging(true)}
+      onDragStart={() => setIsDragging(!isResizing ? true: false)}
       onDragEnd={(event, info) => {
+        if (isResizing) return;
         setIsDragging(false);
 
         // Handle horizontal movement for timeline updates
@@ -86,8 +140,8 @@ export function TaskBar({
           setTaskStart((p) => addDays(p, daysDragged));
           setTaskEnd((p) => addDays(p, daysDragged));
           
-          // Notes due to batching of state changes, do not use state
-          onUpdate(addDays(start, daysDragged), addDays(end, daysDragged));
+          // Notes due to batching of state changes, do not use state, persist to DB
+          // onUpdate(addDays(start, daysDragged), addDays(end, daysDragged));
         } else if (Math.abs(info.offset.y) > 10) {
           // Handle vertical reordering with snapping
           const rowHeight = 48; // Height of each row
@@ -113,6 +167,7 @@ export function TaskBar({
         top: 0,
         position: "absolute",
         zIndex: isDragging ? 50 : 1,
+        cursor: isResizing ? "ew-resize" : "grabbing",
       }}
       animate={{
         y: index * 48,
@@ -129,6 +184,14 @@ export function TaskBar({
           {format(start, "MMM d")} -{" "}
           {format(end, "MMM d")}
         </span>
+        <div
+          className="absolute left-0 h-full w-2 cursor-ew-resize"
+          onPointerDown={(e) => handleResizeStart(e, "left")}
+        />
+        <div
+          className="absolute right-0 h-full w-2 cursor-ew-resize"
+          onPointerDown={(e) => handleResizeStart(e, "right")}
+        />
         <Card
           className={`h-full w-full cursor-grab active:cursor-grabbing hover:ring-2 hover:ring-offset-1 hover:ring-primary/20 transition-shadow ${
             task.status.toUpperCase() === "DONE"
