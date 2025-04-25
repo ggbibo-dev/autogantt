@@ -36,6 +36,8 @@ export function TaskBar({
   const [end, setTaskEnd] = useState(taskEnd);
 
   const [isResizing, setIsResizing] = useState(false);
+  const startRef = useRef(start);
+  const endRef = useRef(end);
   
   const taskStartDate = formatInTimeZone(taskStart, 'America/New_York', 'yyyy-MM-dd HH:mm:ssXXX')
   const taskEndDate = formatInTimeZone(taskEnd, 'America/New_York', "yyyy-MM-dd HH:mm:ssXXX");
@@ -48,7 +50,7 @@ export function TaskBar({
   (differenceInSeconds(start, timelineStart) / totalDays) * 100;
   
   const width =
-  (differenceInSeconds(min([end, timelineEnd]), taskStartDate) / totalDays) * 100;
+  (differenceInSeconds(min([end, timelineEnd]), start) / totalDays) * 100;
   
   const left = `${position}%`;
   const barWidth = `${width}%`;
@@ -71,14 +73,13 @@ export function TaskBar({
         const newStart = addSeconds(initialStart, daysDragged * secondsInDay);
         if (newStart < initialEnd) {
           setTaskStart(newStart);
-          
-          // onUpdate(newStart, initialEnd);
+          startRef.current = newStart;
         }
       } else if (direction === "right") {
         const newEnd = addSeconds(initialEnd, daysDragged * secondsInDay);
         if (newEnd > initialStart) {
           setTaskEnd(newEnd);
-          // onUpdate(initialStart, newEnd);
+          endRef.current = newEnd;
         }
       }
     }
@@ -87,22 +88,25 @@ export function TaskBar({
       e.stopPropagation();
       setIsResizing(true);
       // e.preventDefault();
-      console.log("mouse down")
     }
 
     function onMouseUp() {
       document.removeEventListener("mousemove", onMouseMove);
       document.removeEventListener("mouseup", onMouseUp);
       document.removeEventListener("mousedown", onMouseDown);
-
-      console.log("mouse up")
       
       setIsResizing(false);
+
+      if (direction === "left") {
+        onUpdate(startRef.current, initialEnd);
+      } else if (direction === "right") {
+        onUpdate(initialStart, endRef.current);
+      }
     }
 
+    document.addEventListener("mousedown", onMouseDown);
     document.addEventListener("mousemove", onMouseMove);
     document.addEventListener("mouseup", onMouseUp);
-    document.addEventListener("mousedown", onMouseDown);
     
   }
 
@@ -193,7 +197,7 @@ export function TaskBar({
           onPointerDown={(e) => handleResizeStart(e, "right")}
         />
         <Card
-          className={`h-full w-full cursor-grab active:cursor-grabbing hover:ring-2 hover:ring-offset-1 hover:ring-primary/20 transition-shadow ${
+          className={`h-full w-full active:cursor-grabbing hover:ring-2 hover:ring-offset-1 hover:ring-primary/20 transition-shadow ${
             task.status.toUpperCase() === "DONE"
               ? "bg-green-100 hover:bg-green-100/90"
               : task.status.toUpperCase() === "IN PROGRESS"

@@ -202,12 +202,20 @@ export function registerRoutes(app: Express) {
         const updatedTask = { ...task };
         const taskLogs = editLogsList.filter(log => log.taskId === task.id);
 
+        let foundStartDate = false;
+        let foundEndDate = false;
+
         for (const log of taskLogs) {
-          if (log.updatedField === "startDate" && log.newValue) {
-          updatedTask.startDate = new Date(log.newValue);
+          if (!foundStartDate && log.updatedField === "startDate" && log.newValue) {
+            updatedTask.startDate = new Date(log.newValue);
+            foundStartDate = true;
           }
-          if (log.updatedField === "endDate" && log.newValue) {
-          updatedTask.endDate = new Date(log.newValue);
+          if (!foundEndDate && log.updatedField === "endDate" && log.newValue) {
+            updatedTask.endDate = new Date(log.newValue);
+            foundEndDate = true;
+          }
+          if (foundStartDate && foundEndDate) {
+            break; // Stop iterating after both are found
           }
         }
 
