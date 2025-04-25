@@ -195,7 +195,7 @@ export function registerRoutes(app: Express) {
       // Fetch the latest updates from the edit_logs table for all tasks
       const editLogsList = await db.select()
       .from(editLogs)
-      .orderBy(desc(editLogs.updatedAt)); // Order by most recent changes
+      .orderBy(desc(editLogs.updatedAt));
 
       // Apply the latest changes to each task
       const updatedTasks = tasksList.map(task => {
@@ -215,7 +215,7 @@ export function registerRoutes(app: Express) {
             foundEndDate = true;
           }
           if (foundStartDate && foundEndDate) {
-            break; // Stop iterating after both are found
+            break; 
           }
         }
 
