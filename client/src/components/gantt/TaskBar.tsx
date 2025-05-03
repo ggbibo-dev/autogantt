@@ -7,6 +7,7 @@ import type { Task } from "@db/schema";
 import type { JiraTask } from "@/types/jira";
 
 interface TaskBarProps {
+  // task: Task & Partial<JiraTask>;
   task: Task & Partial<JiraTask>;
   startDate: Date;
   endDate: Date;
@@ -25,6 +26,7 @@ export function TaskBar({
   onUpdate,
   onOrderChange,
 }: TaskBarProps) {
+
   const dragRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const taskStart = new Date(task.startDate)
@@ -39,8 +41,6 @@ export function TaskBar({
   const startRef = useRef(start);
   const endRef = useRef(end);
   
-  const taskStartDate = formatInTimeZone(taskStart, 'America/New_York', 'yyyy-MM-dd HH:mm:ssXXX')
-  const taskEndDate = formatInTimeZone(taskEnd, 'America/New_York', "yyyy-MM-dd HH:mm:ssXXX");
   const timelineStart = formatInTimeZone(new Date(startDate), 'America/New_York', "yyyy-MM-dd HH:mm:ssXXX");
   
   const timelineEnd = formatInTimeZone(new Date(endDate), 'America/New_York', "yyyy-MM-dd HH:mm:ssXXX");
@@ -51,10 +51,23 @@ export function TaskBar({
   
   const width =
   (differenceInSeconds(min([end, timelineEnd]), start) / totalDays) * 100;
-  
+
   const left = `${position}%`;
   const barWidth = `${width}%`;
-  
+
+  const originalStartDate = new Date(task.originalStartDate || task.startDate);
+  const originalEndDate = new Date(task.originalEndDate || task.endDate);
+
+  // Calculate the original position relative to the main task bar's start
+  const originalPosition =
+    (differenceInSeconds(originalStartDate, start) / differenceInSeconds(end, start)) * 100;
+
+  // Calculate the original width based on the original start and end dates
+  const originalWidth =
+    (differenceInSeconds(originalEndDate, originalStartDate) / differenceInSeconds(end, start)) * 100;
+
+  const originalLeft = `${originalPosition}%`;
+  const originalBarWidth = `${originalWidth}%`;
   const secondsInDay = 86400; // 24 hours * 60 minutes * 60 seconds
   
   function handleResizeStart(e: PointerEvent<HTMLDivElement>, direction: "left" | "right"): void {
@@ -183,6 +196,18 @@ export function TaskBar({
         mass: 0.8,
       }}
     >
+      {/* Original TaskBar (Dotted Line) */}
+      <div
+      className="absolute h-10 border-dotted border-2 border-gray-800 opacity-100"
+      style={{
+        left: originalLeft,
+        width: originalBarWidth,
+        top: 0,
+        position: "absolute",
+        zIndex: 1,
+      }}
+      ></div>
+
       <div className="relative flex items-center w-full h-full">
         <span className="absolute right-full pr-2 text-xs text-muted-foreground whitespace-nowrap">
           {format(start, "MMM d")} -{" "}
