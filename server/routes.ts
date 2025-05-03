@@ -199,7 +199,7 @@ export function registerRoutes(app: Express) {
 
       // Apply the latest changes to each task
       const updatedTasks = tasksList.map(task => {
-        const updatedTask = { ...task };
+        const updatedTask = { ...task, originalStartDate: task.startDate, originalEndDate: task.endDate };
         const taskLogs = editLogsList.filter(log => log.taskId === task.id);
 
         let foundStartDate = false;
@@ -218,7 +218,6 @@ export function registerRoutes(app: Express) {
             break; 
           }
         }
-
         return updatedTask;
       });
 

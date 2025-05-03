@@ -26,4 +26,6 @@ export interface JiraTask {
   jiraId: string;
   dependencies: any;
   metadata: any;
+  originalStartDate: Date;
+  originalEndDate: Date;
 }
