@@ -196,18 +196,6 @@ export function TaskBar({
         mass: 0.8,
       }}
     >
-      {/* Original TaskBar (Dotted Line) */}
-      <div
-      className="absolute h-10 border-dotted border-2 border-gray-800 opacity-100"
-      style={{
-        left: originalLeft,
-        width: originalBarWidth,
-        top: 0,
-        position: "absolute",
-        zIndex: 1,
-      }}
-      ></div>
-
       <div className="relative flex items-center w-full h-full">
         <span className="absolute right-full pr-2 text-xs text-muted-foreground whitespace-nowrap">
           {format(start, "MMM d")} -{" "}

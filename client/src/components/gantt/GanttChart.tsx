@@ -307,7 +307,6 @@ export function GanttChart() {
             className="overflow-hidden p-3"
             onResize={(size) => setPanelWidth(size)}
           >
-              
             <div ref={rightResizablePanelContainerRef} className="relative w-full">
             <TargetLines 
               maxBoundingWidth={rightResizablePanelContainerRef.current?.clientWidth || 0}
@@ -338,8 +337,6 @@ export function GanttChart() {
               >
                 <div className="absolute inset-0 overflow-hidden">
                   <div>
-                    
-
                     <div>
                       {(epics || []).map((epic) => (
                         <div key={epic.id}>
@@ -351,7 +348,6 @@ export function GanttChart() {
                                   ?.length || 0) * 48,
                             }}
                           >
-                            
                             {tasks
                               ?.filter((task) => task.epicId === epic.id)
                               .sort(
