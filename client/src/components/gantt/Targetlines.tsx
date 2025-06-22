@@ -91,4 +91,4 @@ const TargetLines: React.FC<TargetLinesProps> = ({
     );
 };
 
-export default TargetLines;
+export {TargetLines};

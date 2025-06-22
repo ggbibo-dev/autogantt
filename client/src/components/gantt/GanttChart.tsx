@@ -18,8 +18,8 @@ import type { Epic, Task } from "@db/schema";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
-import { TaskBar } from "./TaskBar";
-import { Timeline } from "./Timeline";
+import { TaskBar } from "@/components/gantt/TaskBar";
+import { Timeline } from "@/components/gantt/Timeline";
 import {
   fetchJiraEpics,
   fetchJiraTasks,
@@ -30,7 +30,7 @@ import {
   ResizablePanelGroup,
   ResizableHandle,
 } from "@/components/ui/resizable";
-import TargetLines from "./Targetlines";
+import { TargetLines } from "@/components/gantt/Targetlines";
 import { setuid } from "process";
 
 export function GanttChart() {
