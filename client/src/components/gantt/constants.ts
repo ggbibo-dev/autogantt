@@ -1,5 +1,6 @@
 export const GANTT_DEFAULT_RANGE_DAYS = 7;
 export const GANTT_EXPORT_PADDING_DAYS = 7;
+export const GANTT_GROUP_HEADER_HEIGHT = 36;
 export const GANTT_ROW_HEIGHT = 64;
 export const GANTT_BAR_HEIGHT = 44;
 export const GANTT_HEADER_HEIGHT = 56;

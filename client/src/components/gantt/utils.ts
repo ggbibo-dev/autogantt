@@ -11,6 +11,7 @@ import type { JiraTask } from "@/types/jira";
 import {
   GANTT_DEFAULT_RANGE_DAYS,
   GANTT_EXPORT_PADDING_DAYS,
+  GANTT_GROUP_HEADER_HEIGHT,
   GANTT_MIN_HEIGHT,
   GANTT_ROW_HEIGHT,
 } from "@/components/gantt/constants";
@@ -81,7 +82,7 @@ export function groupTasksByEpic(
 }
 
 export function getGroupHeight(taskCount: number) {
-  return taskCount * GANTT_ROW_HEIGHT;
+  return GANTT_GROUP_HEADER_HEIGHT + taskCount * GANTT_ROW_HEIGHT;
 }
 
 export function getChartHeight(groups: GanttGroup[]) {
