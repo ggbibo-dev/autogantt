@@ -212,19 +212,9 @@ export function GanttChart() {
                 className="pr-3"
               >
                 <div
-                  className="grid h-full grid-cols-[minmax(0,1fr)_7.5rem] items-center gap-x-5 rounded-[20px] border border-white/45 bg-transparent px-4"
+                  className="rounded-[20px] border border-white/45 bg-transparent"
                   style={{ height: GANTT_HEADER_HEIGHT }}
-                >
-                  <div className="flex min-w-0 items-center gap-3">
-                    <div className="neo-badge">Tickets</div>
-                    <p className="truncate text-xs font-medium text-muted-foreground">
-                      Rows grouped beneath each epic lane
-                    </p>
-                  </div>
-                  <p className="text-right text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                    Status
-                  </p>
-                </div>
+                />
                 <GanttTaskList groups={groups} />
               </ResizablePanel>
 
