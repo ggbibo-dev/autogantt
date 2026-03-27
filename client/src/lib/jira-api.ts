@@ -1,5 +1,5 @@
-import { JiraSettings } from "../types/jira";
-import type { Task } from "@db/schema";
+import type { Epic } from "@db/schema";
+import type { JiraSettings, JiraTask } from "@/types/jira";
 
 export async function syncWithJira(domain: string, apiToken: string, email: string) {
   const response = await fetch('/api/jira/sync', {
@@ -14,7 +14,7 @@ export async function syncWithJira(domain: string, apiToken: string, email: stri
   return response.json();
 }
 
-export async function fetchJiraEpics(): Promise<any> { //Added type any due to the lack of definition for JiraEpic in the provided snippet.  Should be replaced with correct type.
+export async function fetchJiraEpics(): Promise<Epic[]> {
   const response = await fetch('/api/epics');
   if (!response.ok) {
     throw new Error('Failed to fetch epics');
@@ -22,21 +22,24 @@ export async function fetchJiraEpics(): Promise<any> { //Added type any due to t
   return response.json();
 }
 
-export async function fetchJiraTasks(): Promise<Task[]> {
+export async function fetchJiraTasks(): Promise<JiraTask[]> {
   const response = await fetch('/api/tasks');
   if (!response.ok) {
     throw new Error('Failed to fetch tasks');
   }
-  const tasks: Task[] = await response.json();
-  // Map DB tasks to include JiraTask properties
+  const tasks: JiraTask[] = await response.json();
   return tasks.map(task => ({
     ...task,
-    jiraId: '', // Default empty string for non-JIRA tasks
-    metadata: {}, // Default empty object for non-JIRA tasks
-  })) as unknown as Task[];
+    jiraId: task.jiraId || '',
+    metadata: task.metadata || {},
+  }));
 }
 
-export async function updateTaskDates(taskId: number, startDate: Date, endDate: Date): Promise<any> { //Added type any due to the lack of return type definition.  Should be replaced with correct type.
+export async function updateTaskDates(
+  taskId: number,
+  startDate: Date,
+  endDate: Date,
+): Promise<{ success: boolean }> {
   const data = {
     startDate: startDate,
     endDate: endDate
@@ -60,7 +63,9 @@ export async function fetchJiraSettings(): Promise<JiraSettings> {
   return response.json();
 }
 
-export async function saveJiraSettings(settings: JiraSettings): Promise<any> { //Added type any due to the lack of return type definition. Should be replaced with correct type.
+export async function saveJiraSettings(
+  settings: JiraSettings,
+): Promise<{ success: boolean }> {
   const response = await fetch('/api/settings', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
