@@ -29,7 +29,7 @@ export function Timeline({ startDate, endDate, zoom }: TimelineProps) {
       {steps.map((step, index) => (
         <div
           key={`${step.toISOString()}-${index}`}
-          className="absolute inset-y-0"
+          className="absolute top-0"
           style={{ left: `${tickWidth * index}%`, width: `${tickWidth}%` }}
         >
           <div className="absolute inset-x-0 top-0 flex justify-center">
@@ -37,7 +37,6 @@ export function Timeline({ startDate, endDate, zoom }: TimelineProps) {
               {format(step, labelFormat)}
             </span>
           </div>
-          <div className="absolute bottom-0 left-0 top-5 w-px bg-slate-300/80" />
         </div>
       ))}
     </div>
