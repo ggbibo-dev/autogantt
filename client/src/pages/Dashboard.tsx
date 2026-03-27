@@ -45,7 +45,7 @@ export function Dashboard() {
       <Header />
       <main className="mx-auto flex w-full max-w-[1600px] flex-1 flex-col gap-6 px-6 py-6">
         <section className="neo-surface relative overflow-hidden px-6 py-6">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.85),transparent_45%),radial-gradient(circle_at_bottom_right,rgba(176,196,222,0.26),transparent_40%)]" />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.7),transparent_48%),linear-gradient(135deg,rgba(255,255,255,0.1),rgba(216,226,239,0.06))]" />
           <div className="relative flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
             <div className="max-w-3xl space-y-3">
               <div className="neo-badge">Neumorphic Planner</div>

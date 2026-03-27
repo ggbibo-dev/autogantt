@@ -58,9 +58,9 @@
   body {
     @apply min-h-screen text-foreground antialiased;
     background:
-      radial-gradient(circle at top left, rgba(255, 255, 255, 0.92), transparent 34%),
-      radial-gradient(circle at bottom right, rgba(169, 191, 224, 0.28), transparent 30%),
-      linear-gradient(145deg, hsl(var(--background)), #e6edf7 58%, #dce5f2);
+      radial-gradient(circle at top left, rgba(255, 255, 255, 0.72), transparent 38%),
+      radial-gradient(circle at bottom right, rgba(173, 191, 219, 0.16), transparent 34%),
+      linear-gradient(154deg, #eef3fa 0%, #e7edf6 55%, #dde5f0 100%);
   }
 
   #root {
@@ -70,19 +70,19 @@
 
 @layer components {
   .neo-surface {
-    background: linear-gradient(145deg, rgba(255, 255, 255, 0.82), rgba(219, 229, 242, 0.9));
+    background: linear-gradient(148deg, rgba(252, 253, 255, 0.86), rgba(224, 232, 243, 0.88));
     border: 1px solid rgba(255, 255, 255, 0.72);
     box-shadow:
-      18px 18px 38px rgba(163, 177, 198, 0.34),
-      -16px -16px 36px rgba(255, 255, 255, 0.9);
-    backdrop-filter: blur(18px);
+      14px 14px 28px rgba(163, 177, 198, 0.24),
+      -14px -14px 28px rgba(255, 255, 255, 0.82);
+    backdrop-filter: blur(14px);
   }
 
   .neo-inset {
-    background: linear-gradient(145deg, rgba(220, 229, 242, 0.88), rgba(247, 249, 255, 0.96));
+    background: linear-gradient(145deg, rgba(224, 231, 242, 0.82), rgba(247, 249, 255, 0.94));
     box-shadow:
-      inset 10px 10px 18px rgba(163, 177, 198, 0.28),
-      inset -10px -10px 18px rgba(255, 255, 255, 0.82);
+      inset 8px 8px 16px rgba(163, 177, 198, 0.2),
+      inset -8px -8px 16px rgba(255, 255, 255, 0.78);
   }
 
   .neo-button {
@@ -126,16 +126,16 @@
 
   .neo-badge {
     @apply inline-flex items-center rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500;
-    background: linear-gradient(145deg, rgba(248, 250, 255, 0.94), rgba(225, 233, 245, 0.9));
+    background: linear-gradient(145deg, rgba(248, 250, 255, 0.92), rgba(230, 236, 246, 0.9));
     box-shadow:
-      6px 6px 12px rgba(163, 177, 198, 0.2),
-      -6px -6px 12px rgba(255, 255, 255, 0.9);
+      5px 5px 10px rgba(163, 177, 198, 0.16),
+      -5px -5px 10px rgba(255, 255, 255, 0.82);
   }
 
   .neo-grid {
     background-image:
-      linear-gradient(to right, rgba(177, 191, 214, 0.16) 1px, transparent 1px),
-      linear-gradient(to bottom, rgba(177, 191, 214, 0.12) 1px, transparent 1px);
+      linear-gradient(to right, rgba(177, 191, 214, 0.08) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(177, 191, 214, 0.06) 1px, transparent 1px);
     background-size: 48px 48px;
     background-position: center;
   }
