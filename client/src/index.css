@@ -72,7 +72,9 @@
   .neo-surface {
     background: linear-gradient(148deg, rgba(252, 253, 255, 0.86), rgba(224, 232, 243, 0.88));
     border: 1px solid rgba(255, 255, 255, 0.72);
-    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.58);
+    box-shadow:
+      14px 14px 28px rgba(163, 177, 198, 0.24),
+      -14px -14px 28px rgba(255, 255, 255, 0.82);
     backdrop-filter: blur(14px);
   }
 
@@ -86,36 +88,48 @@
   .neo-button {
     background: linear-gradient(145deg, rgba(248, 250, 255, 0.98), rgba(220, 229, 242, 0.92));
     border-color: rgba(255, 255, 255, 0.72);
-    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.62);
+    box-shadow:
+      8px 8px 16px rgba(163, 177, 198, 0.3),
+      -8px -8px 16px rgba(255, 255, 255, 0.92);
   }
 
   .neo-button:hover {
     transform: translateY(1px);
-    box-shadow: inset 4px 4px 10px rgba(163, 177, 198, 0.16);
+    box-shadow:
+      inset 6px 6px 12px rgba(163, 177, 198, 0.24),
+      inset -6px -6px 12px rgba(255, 255, 255, 0.9);
   }
 
   .neo-button-outline {
     background: linear-gradient(145deg, rgba(234, 240, 249, 0.92), rgba(247, 249, 255, 0.98));
     border-color: rgba(255, 255, 255, 0.7);
-    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.56);
+    box-shadow:
+      6px 6px 14px rgba(163, 177, 198, 0.22),
+      -6px -6px 14px rgba(255, 255, 255, 0.88);
   }
 
   .neo-button-outline:hover,
   .neo-button-ghost:hover {
     transform: translateY(1px);
-    box-shadow: inset 4px 4px 10px rgba(163, 177, 198, 0.14);
+    box-shadow:
+      inset 6px 6px 12px rgba(163, 177, 198, 0.2),
+      inset -6px -6px 12px rgba(255, 255, 255, 0.86);
   }
 
   .neo-button-ghost {
     background: linear-gradient(145deg, rgba(239, 244, 251, 0.82), rgba(247, 249, 255, 0.9));
     border-color: rgba(255, 255, 255, 0.62);
-    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.52);
+    box-shadow:
+      6px 6px 14px rgba(163, 177, 198, 0.18),
+      -6px -6px 14px rgba(255, 255, 255, 0.86);
   }
 
   .neo-badge {
     @apply inline-flex items-center rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500;
     background: linear-gradient(145deg, rgba(248, 250, 255, 0.92), rgba(230, 236, 246, 0.9));
-    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.56);
+    box-shadow:
+      5px 5px 10px rgba(163, 177, 198, 0.16),
+      -5px -5px 10px rgba(255, 255, 255, 0.82);
   }
 
   .neo-grid {

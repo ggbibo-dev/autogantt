@@ -238,7 +238,7 @@ export function TaskBar({
         />
         <Card
           className={cn(
-            "h-full w-full border shadow-none transition-shadow hover:ring-2 hover:ring-primary/15 hover:ring-offset-1 active:cursor-grabbing",
+            "h-full w-full border shadow-[10px_10px_18px_rgba(163,177,198,0.2),-10px_-10px_18px_rgba(255,255,255,0.88)] transition-shadow hover:ring-2 hover:ring-primary/15 hover:ring-offset-1 active:cursor-grabbing",
             statusClass,
             isDragging && "ring-2 ring-primary/30 ring-offset-2 shadow-lg",
           )}

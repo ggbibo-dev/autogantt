@@ -11,7 +11,7 @@ const buttonVariants = cva(
       variant: {
         default: "neo-button text-slate-700",
         destructive:
-          "border-rose-200/80 bg-[linear-gradient(145deg,rgba(255,245,246,0.95),rgba(247,210,219,0.88))] text-rose-700 shadow-none hover:translate-y-[1px] hover:shadow-[inset_4px_4px_10px_rgba(207,174,182,0.16)]",
+          "border-rose-200/80 bg-[linear-gradient(145deg,rgba(255,245,246,0.95),rgba(247,210,219,0.88))] text-rose-700 shadow-[8px_8px_16px_rgba(163,177,198,0.24),-8px_-8px_16px_rgba(255,255,255,0.9)] hover:translate-y-[1px] hover:shadow-[inset_6px_6px_12px_rgba(207,174,182,0.25),inset_-6px_-6px_12px_rgba(255,255,255,0.92)]",
         outline:
           "neo-button-outline text-slate-600",
         secondary:
