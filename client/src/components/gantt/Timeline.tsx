@@ -25,14 +25,14 @@ export function Timeline({ startDate, endDate, zoom }: TimelineProps) {
   );
 
   return (
-    <div className="relative h-full">
+    <div className="relative flex h-full items-center">
       {steps.map((step, index) => (
         <div
           key={`${step.toISOString()}-${index}`}
-          className="absolute top-0"
+          className="absolute inset-y-0 flex items-center"
           style={{ left: `${tickWidth * index}%`, width: `${tickWidth}%` }}
         >
-          <div className="absolute inset-x-0 top-0 flex justify-center">
+          <div className="flex w-full justify-center">
             <span className="whitespace-nowrap text-[11px] font-medium text-muted-foreground">
               {format(step, labelFormat)}
             </span>

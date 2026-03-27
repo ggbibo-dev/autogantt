@@ -23,18 +23,20 @@ export function GanttTaskList({ groups }: GanttTaskListProps) {
                 height: GANTT_ROW_HEIGHT,
               }}
             >
-              <div className="grid min-w-0 flex-1 grid-cols-[minmax(0,1fr)_7.5rem] items-center gap-x-5 rounded-[18px] border border-white/45 bg-transparent px-4 py-4">
-                <div className="min-w-0 max-w-[34rem]">
+              <div className="grid h-full min-w-0 flex-1 grid-cols-[minmax(0,1fr)_7.5rem] items-stretch gap-x-5 rounded-[18px] border border-white/45 bg-transparent px-4">
+                <div className="flex min-w-0 max-w-[34rem] flex-col justify-center gap-2 py-3">
                   <p className="truncate text-sm font-semibold text-foreground">
                     {task.name}
                   </p>
-                  <p className="mt-2 truncate text-xs leading-5 text-muted-foreground">
+                  <p className="truncate text-xs leading-5 text-muted-foreground">
                     {task.description || task.status}
                   </p>
                 </div>
-                <span className="justify-self-end text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                  {task.status}
-                </span>
+                <div className="flex h-full items-center justify-end py-3">
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                    {task.status}
+                  </span>
+                </div>
               </div>
             </div>
           ))}
