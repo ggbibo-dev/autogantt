@@ -14,9 +14,6 @@ export function GanttTaskList({ groups }: GanttTaskListProps) {
           className="relative mb-4 rounded-[24px] p-3 last:mb-0"
           style={{ minHeight: getGroupHeight(group.tasks.length) }}
         >
-          <div className="absolute right-4 top-3 neo-badge">
-            {group.epic.name}
-          </div>
           {group.tasks.map((task, index) => (
             <div
               key={task.id}
