@@ -44,7 +44,7 @@ export function GanttToolbar({
         </Button>
       </div>
 
-      <div className="neo-inset flex min-w-[280px] items-center gap-4 rounded-[24px] px-4 py-3">
+      <div className="neo-inset flex min-w-[340px] flex-1 items-center gap-4 rounded-[24px] px-4 py-3 sm:min-w-[460px] sm:max-w-[680px]">
         <div className="space-y-1 pr-2">
           <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
             Zoom
@@ -57,7 +57,7 @@ export function GanttToolbar({
           max={GANTT_ZOOM_MAX}
           step={GANTT_ZOOM_STEP}
           onValueChange={([nextZoom]) => onZoomChange(nextZoom)}
-          className="max-w-[220px]"
+          className="min-w-[220px] flex-1 sm:min-w-[320px]"
         />
         <Button type="button" onClick={onExport}>
           Export Chart

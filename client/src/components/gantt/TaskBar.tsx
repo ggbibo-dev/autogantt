@@ -134,15 +134,16 @@ export function TaskBar({
   return (
     <motion.div
       ref={barRef}
+      initial={false}
       drag={!isResizing}
       dragDirectionLock
       dragConstraints={{ left: 0 }}
       dragTransition={{ bounceStiffness: 600, bounceDamping: 30 }}
       dragMomentum={false}
-      dragElastic={{ right: 0 }}
+      dragElastic={0.06}
       whileDrag={{
-        scale: 1.02,
-        boxShadow: "0 8px 16px rgba(0, 0, 0, 0.12)",
+        scale: 1.01,
+        boxShadow: "0 16px 28px rgba(120, 139, 166, 0.18)",
         cursor: isResizing ? "ew-resize" : "grabbing",
       }}
       onDragStart={() => {
@@ -198,18 +199,29 @@ export function TaskBar({
       }}
       className="absolute cursor-grab"
       style={{
-        left,
         width: barWidth,
         top: 0,
         zIndex: isDragging ? 50 : 1,
         height: GANTT_BAR_HEIGHT,
+        willChange: "transform, left",
       }}
-      animate={{ y: index * GANTT_ROW_HEIGHT }}
+      animate={{
+        left,
+        y: index * GANTT_ROW_HEIGHT,
+      }}
       transition={{
-        type: "spring",
-        damping: 30,
-        stiffness: 400,
-        mass: 0.8,
+        y: {
+          type: "spring",
+          damping: 30,
+          stiffness: 400,
+          mass: 0.8,
+        },
+        left: {
+          type: "spring",
+          damping: 34,
+          stiffness: 480,
+          mass: 0.7,
+        },
       }}
     >
       <div className="relative flex h-full w-full items-center">
@@ -226,7 +238,7 @@ export function TaskBar({
         />
         <Card
           className={cn(
-            "h-full w-full border shadow-[8px_8px_16px_rgba(163,177,198,0.24),-8px_-8px_16px_rgba(255,255,255,0.9)] transition-shadow hover:ring-2 hover:ring-primary/15 hover:ring-offset-1 active:cursor-grabbing",
+            "h-full w-full border shadow-[10px_10px_18px_rgba(163,177,198,0.2),-10px_-10px_18px_rgba(255,255,255,0.88)] transition-shadow hover:ring-2 hover:ring-primary/15 hover:ring-offset-1 active:cursor-grabbing",
             statusClass,
             isDragging && "ring-2 ring-primary/30 ring-offset-2 shadow-lg",
           )}
@@ -234,7 +246,7 @@ export function TaskBar({
           <div className="flex h-full items-center justify-between gap-3 px-4">
             <div className="min-w-0">
               <p className="truncate text-sm font-semibold">{task.name}</p>
-              <p className="truncate text-[11px] uppercase tracking-[0.18em] text-slate-500">
+              <p className="mt-1 truncate text-[11px] uppercase tracking-[0.18em] text-slate-500">
                 {task.status}
               </p>
             </div>
