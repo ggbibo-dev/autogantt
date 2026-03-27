@@ -11,7 +11,7 @@ export function GanttTaskList({ groups }: GanttTaskListProps) {
       {groups.map((group) => (
         <div
           key={group.epic.id}
-          className="relative mb-4 rounded-[24px] bg-white/12 p-3 last:mb-0"
+          className="relative mb-4 rounded-[24px] p-3 last:mb-0"
           style={{ minHeight: getGroupHeight(group.tasks.length) }}
         >
           <div className="absolute right-4 top-3 neo-badge">
@@ -26,7 +26,7 @@ export function GanttTaskList({ groups }: GanttTaskListProps) {
                 height: GANTT_ROW_HEIGHT,
               }}
             >
-              <div className="grid min-w-0 flex-1 grid-cols-[minmax(0,1fr)_7.5rem] items-center gap-x-5 rounded-[18px] border border-white/55 bg-[linear-gradient(145deg,rgba(236,241,248,0.72),rgba(245,248,252,0.8))] px-4 py-4 shadow-[inset_4px_4px_10px_rgba(163,177,198,0.08),inset_-4px_-4px_10px_rgba(255,255,255,0.38)]">
+              <div className="grid min-w-0 flex-1 grid-cols-[minmax(0,1fr)_7.5rem] items-center gap-x-5 rounded-[18px] border border-white/45 bg-transparent px-4 py-4">
                 <div className="min-w-0 max-w-[34rem]">
                   <p className="truncate text-sm font-semibold text-foreground">
                     {task.name}

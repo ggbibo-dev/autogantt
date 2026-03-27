@@ -212,7 +212,7 @@ export function GanttChart() {
                 className="pr-3"
               >
                 <div
-                  className="rounded-[20px] border border-white/50 bg-[linear-gradient(145deg,rgba(236,241,248,0.68),rgba(244,247,252,0.76))] shadow-[inset_4px_4px_10px_rgba(163,177,198,0.08),inset_-4px_-4px_10px_rgba(255,255,255,0.34)]"
+                  className="rounded-[20px] border border-white/45 bg-transparent"
                   style={{ height: GANTT_HEADER_HEIGHT }}
                 />
                 <GanttTaskList groups={groups} />
