@@ -61,11 +61,11 @@ export function TargetLines({
       }}
     >
       <div className="absolute -top-6 left-1/2 -translate-x-1/2">
-        <span className="border-b border-red-400/80 text-xs text-red-400/80">
+        <span className="neo-badge border-none text-[11px] text-rose-600">
           End
         </span>
       </div>
-      <div className="absolute inset-y-0 left-0 border-l border-red-400/50" />
+      <div className="absolute inset-y-0 left-0 border-l border-rose-400/60" />
     </motion.div>
   );
 }

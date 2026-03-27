@@ -41,13 +41,30 @@ export function Dashboard() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col bg-muted/20">
+    <div className="flex min-h-screen flex-col">
       <Header />
-      <main className="mx-auto flex w-full max-w-[1600px] flex-1 flex-col gap-4 px-6 py-6">
-        <CsvUploadControl
-          disabled={uploadMutation.isPending}
-          onUpload={handleFileUpload}
-        />
+      <main className="mx-auto flex w-full max-w-[1600px] flex-1 flex-col gap-6 px-6 py-6">
+        <section className="neo-surface relative overflow-hidden px-6 py-6">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.85),transparent_45%),radial-gradient(circle_at_bottom_right,rgba(176,196,222,0.26),transparent_40%)]" />
+          <div className="relative flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+            <div className="max-w-3xl space-y-3">
+              <div className="neo-badge">Neumorphic Planner</div>
+              <div className="space-y-2">
+                <h2 className="text-3xl font-semibold tracking-tight text-slate-700">
+                  Shape the roadmap before the real CSV lands.
+                </h2>
+                <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
+                  The first load now opens in demo mode with curated sample work.
+                  Upload a CSV whenever you want to replace it with imported tasks.
+                </p>
+              </div>
+            </div>
+            <CsvUploadControl
+              disabled={uploadMutation.isPending}
+              onUpload={handleFileUpload}
+            />
+          </div>
+        </section>
         <GanttChart />
       </main>
     </div>

@@ -20,9 +20,12 @@ interface TaskBarProps {
 }
 
 const TASK_STATUS_STYLES: Record<string, string> = {
-  DONE: "bg-green-100 hover:bg-green-100/90",
-  "IN PROGRESS": "bg-blue-100 hover:bg-blue-100/90",
-  BLOCKED: "bg-red-100 hover:bg-red-100/90",
+  DONE:
+    "border-emerald-200/80 bg-[linear-gradient(145deg,rgba(237,255,247,0.95),rgba(203,240,221,0.88))] text-emerald-950",
+  "IN PROGRESS":
+    "border-sky-200/80 bg-[linear-gradient(145deg,rgba(241,248,255,0.95),rgba(205,226,248,0.88))] text-sky-950",
+  BLOCKED:
+    "border-rose-200/80 bg-[linear-gradient(145deg,rgba(255,245,246,0.95),rgba(247,210,219,0.88))] text-rose-950",
 };
 
 function normalizeTaskDate(value: Date | string, hour: number) {
@@ -61,7 +64,7 @@ export function TaskBar({
   const barWidth = `${Math.max(0, Math.min(100, rawRight) - Math.max(0, rawLeft))}%`;
   const statusClass =
     TASK_STATUS_STYLES[task.status.toUpperCase()] ??
-    "bg-slate-200 hover:bg-slate-200/90";
+    "border-slate-200/80 bg-[linear-gradient(145deg,rgba(247,249,255,0.96),rgba(220,228,241,0.9))] text-slate-800";
 
   useEffect(() => {
     const taskStart = normalizeTaskDate(task.startDate, 0);
@@ -210,7 +213,7 @@ export function TaskBar({
       }}
     >
       <div className="relative flex h-full w-full items-center">
-        <span className="absolute right-full whitespace-nowrap pr-2 text-xs text-muted-foreground">
+        <span className="absolute right-full whitespace-nowrap pr-3 text-xs font-medium text-muted-foreground">
           {format(start, "MMM d")} - {format(end, "MMM d")}
         </span>
         <div
@@ -223,11 +226,20 @@ export function TaskBar({
         />
         <Card
           className={cn(
-            "h-full w-full transition-shadow hover:ring-2 hover:ring-primary/20 hover:ring-offset-1 active:cursor-grabbing",
+            "h-full w-full border shadow-[8px_8px_16px_rgba(163,177,198,0.24),-8px_-8px_16px_rgba(255,255,255,0.9)] transition-shadow hover:ring-2 hover:ring-primary/15 hover:ring-offset-1 active:cursor-grabbing",
             statusClass,
             isDragging && "ring-2 ring-primary/30 ring-offset-2 shadow-lg",
           )}
-        />
+        >
+          <div className="flex h-full items-center justify-between gap-3 px-4">
+            <div className="min-w-0">
+              <p className="truncate text-sm font-semibold">{task.name}</p>
+              <p className="truncate text-[11px] uppercase tracking-[0.18em] text-slate-500">
+                {task.status}
+              </p>
+            </div>
+          </div>
+        </Card>
       </div>
     </motion.div>
   );
