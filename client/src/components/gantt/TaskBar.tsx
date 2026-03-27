@@ -1,194 +1,207 @@
-import { PointerEvent, useRef, useState } from "react";
-import { format, differenceInSeconds, min, addDays, setDate, startOfDay, addSeconds } from "date-fns";
-import { formatInTimeZone } from 'date-fns-tz';
+import { PointerEvent, useEffect, useRef, useState } from "react";
+import { addDays, addSeconds, differenceInSeconds, format } from "date-fns";
 import { motion } from "framer-motion";
 import { Card } from "@/components/ui/card";
-import type { Task } from "@db/schema";
+import {
+  GANTT_BAR_HEIGHT,
+  GANTT_ROW_HEIGHT,
+  GANTT_SECONDS_IN_DAY,
+} from "@/components/gantt/constants";
+import { cn } from "@/lib/utils";
 import type { JiraTask } from "@/types/jira";
 
 interface TaskBarProps {
-  // task: Task & Partial<JiraTask>;
-  task: Task & Partial<JiraTask>;
+  task: JiraTask;
   startDate: Date;
   endDate: Date;
-  zoom: number;
   index: number;
   onUpdate: (startDate: Date, endDate: Date) => void;
   onOrderChange?: (newIndex: number) => void;
+}
+
+const TASK_STATUS_STYLES: Record<string, string> = {
+  DONE: "bg-green-100 hover:bg-green-100/90",
+  "IN PROGRESS": "bg-blue-100 hover:bg-blue-100/90",
+  BLOCKED: "bg-red-100 hover:bg-red-100/90",
+};
+
+function normalizeTaskDate(value: Date | string, hour: number) {
+  const date = new Date(value);
+  date.setHours(hour, 0, 0, 0);
+  return date;
+}
+
+function getPercentOffset(value: Date, rangeStart: Date, rangeEnd: Date) {
+  const totalDuration = Math.max(1, differenceInSeconds(rangeEnd, rangeStart));
+  const secondsFromStart = differenceInSeconds(value, rangeStart);
+
+  return (secondsFromStart / totalDuration) * 100;
 }
 
 export function TaskBar({
   task,
   startDate,
   endDate,
-  zoom,
   index,
   onUpdate,
   onOrderChange,
 }: TaskBarProps) {
-
-  const dragRef = useRef<HTMLDivElement>(null);
+  const barRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
-  const taskStart = new Date(task.startDate)
-  taskStart.setHours(0,0,0,0)
-  const taskEnd = new Date(task.endDate)
-  taskEnd.setHours(12,0,0,0)
-  
-  const [start, setTaskStart] = useState(taskStart);
-  const [end, setTaskEnd] = useState(taskEnd);
-
+  const [start, setTaskStart] = useState(() => normalizeTaskDate(task.startDate, 0));
+  const [end, setTaskEnd] = useState(() => normalizeTaskDate(task.endDate, 12));
   const [isResizing, setIsResizing] = useState(false);
   const startRef = useRef(start);
   const endRef = useRef(end);
-  
-  const timelineStart = formatInTimeZone(new Date(startDate), 'America/New_York', "yyyy-MM-dd HH:mm:ssXXX");
-  
-  const timelineEnd = formatInTimeZone(new Date(endDate), 'America/New_York', "yyyy-MM-dd HH:mm:ssXXX");
-  const totalDays = differenceInSeconds(timelineEnd, timelineStart);
-  
-  const position =
-  (differenceInSeconds(start, timelineStart) / totalDays) * 100;
-  
-  const width =
-  (differenceInSeconds(min([end, timelineEnd]), start) / totalDays) * 100;
 
-  const left = `${position}%`;
-  const barWidth = `${width}%`;
+  const totalDuration = Math.max(1, differenceInSeconds(endDate, startDate));
+  const rawLeft = getPercentOffset(start, startDate, endDate);
+  const rawRight = getPercentOffset(end, startDate, endDate);
+  const left = `${Math.max(0, Math.min(100, rawLeft))}%`;
+  const barWidth = `${Math.max(0, Math.min(100, rawRight) - Math.max(0, rawLeft))}%`;
+  const statusClass =
+    TASK_STATUS_STYLES[task.status.toUpperCase()] ??
+    "bg-slate-200 hover:bg-slate-200/90";
 
-  const originalStartDate = new Date(task.originalStartDate || task.startDate);
-  const originalEndDate = new Date(task.originalEndDate || task.endDate);
+  useEffect(() => {
+    const taskStart = normalizeTaskDate(task.startDate, 0);
+    const taskEnd = normalizeTaskDate(task.endDate, 12);
+    setTaskStart(taskStart);
+    setTaskEnd(taskEnd);
+    startRef.current = taskStart;
+    endRef.current = taskEnd;
+  }, [task.endDate, task.startDate]);
 
-  // Calculate the original position relative to the main task bar's start
-  const originalPosition =
-    (differenceInSeconds(originalStartDate, start) / differenceInSeconds(end, start)) * 100;
-
-  // Calculate the original width based on the original start and end dates
-  const originalWidth =
-    (differenceInSeconds(originalEndDate, originalStartDate) / differenceInSeconds(end, start)) * 100;
-
-  const originalLeft = `${originalPosition}%`;
-  const originalBarWidth = `${originalWidth}%`;
-  const secondsInDay = 86400; // 24 hours * 60 minutes * 60 seconds
-  
-  function handleResizeStart(e: PointerEvent<HTMLDivElement>, direction: "left" | "right"): void {
-  
-    const initialX = e.clientX;
+  function handleResizeStart(
+    event: PointerEvent<HTMLDivElement>,
+    direction: "left" | "right",
+  ) {
+    event.stopPropagation();
+    const initialX = event.clientX;
     const initialStart = start;
     const initialEnd = end;
-  
-    function onMouseMove(event: MouseEvent) {
-      const deltaX = event.clientX - initialX;
-      const timelineWidth = dragRef.current?.parentElement?.offsetWidth || 1;
-      const dayWidth = timelineWidth / (totalDays / secondsInDay);
+
+    setIsResizing(true);
+
+    function onMouseMove(nextEvent: MouseEvent) {
+      const deltaX = nextEvent.clientX - initialX;
+      const timelineWidth = barRef.current?.parentElement?.offsetWidth || 1;
+      const dayWidth = timelineWidth / (totalDuration / GANTT_SECONDS_IN_DAY);
       const daysDragged = deltaX / dayWidth;
-  
+
       if (direction === "left") {
-        const newStart = addSeconds(initialStart, daysDragged * secondsInDay);
+        const newStart = addSeconds(
+          initialStart,
+          daysDragged * GANTT_SECONDS_IN_DAY,
+        );
         if (newStart < initialEnd) {
           setTaskStart(newStart);
           startRef.current = newStart;
         }
-      } else if (direction === "right") {
-        const newEnd = addSeconds(initialEnd, daysDragged * secondsInDay);
-        if (newEnd > initialStart) {
-          setTaskEnd(newEnd);
-          endRef.current = newEnd;
-        }
+        return;
       }
-    }
 
-    function onMouseDown(event: MouseEvent) {
-      e.stopPropagation();
-      setIsResizing(true);
-      // e.preventDefault();
+      const newEnd = addSeconds(
+        initialEnd,
+        daysDragged * GANTT_SECONDS_IN_DAY,
+      );
+      if (newEnd > initialStart) {
+        setTaskEnd(newEnd);
+        endRef.current = newEnd;
+      }
     }
 
     function onMouseUp() {
       document.removeEventListener("mousemove", onMouseMove);
       document.removeEventListener("mouseup", onMouseUp);
-      document.removeEventListener("mousedown", onMouseDown);
-      
       setIsResizing(false);
 
       if (direction === "left") {
         onUpdate(startRef.current, initialEnd);
-      } else if (direction === "right") {
-        onUpdate(initialStart, endRef.current);
+        return;
       }
+
+      onUpdate(initialStart, endRef.current);
     }
 
-    document.addEventListener("mousedown", onMouseDown);
     document.addEventListener("mousemove", onMouseMove);
     document.addEventListener("mouseup", onMouseUp);
-    
   }
 
   return (
     <motion.div
-      ref={dragRef}
+      ref={barRef}
       drag={!isResizing}
       dragDirectionLock
       dragConstraints={{ left: 0 }}
       dragTransition={{ bounceStiffness: 600, bounceDamping: 30 }}
       dragMomentum={false}
-      dragElastic={{
-        right: 0
-      }}
+      dragElastic={{ right: 0 }}
       whileDrag={{
         scale: 1.02,
         boxShadow: "0 8px 16px rgba(0, 0, 0, 0.12)",
         cursor: isResizing ? "ew-resize" : "grabbing",
       }}
-      onDragStart={() => setIsDragging(!isResizing ? true: false)}
-      onDragEnd={(event, info) => {
-        if (isResizing) return;
-        setIsDragging(false);
-
-        // Handle horizontal movement for timeline updates
-        if (Math.abs(info.offset.x) > Math.abs(info.offset.y)) {
-          // Calculate the width of a single day in pixels
-          const timelineWidth = dragRef.current?.parentElement?.offsetWidth || 1; // Total width of the timeline in pixels
-          const dayWidth = timelineWidth / (totalDays / secondsInDay); // Width of a single day in pixels
-
-          // Calculate the number of days dragged
-          const daysDragged = Math.round(info.offset.x / dayWidth);
-
-          // Update the start and end dates
-          setTaskStart((p) => addDays(p, daysDragged));
-          setTaskEnd((p) => addDays(p, daysDragged));
-          
-          // Notes due to batching of state changes, do not use state, persist to DB
-          // onUpdate(addDays(start, daysDragged), addDays(end, daysDragged));
-        } else if (Math.abs(info.offset.y) > 10) {
-          // Handle vertical reordering with snapping
-          const rowHeight = 48; // Height of each row
-          const container = dragRef.current?.parentElement;
-          if (container) {
-            const containerRect = container.getBoundingClientRect();
-            const elementRect = dragRef.current?.getBoundingClientRect();
-            if (elementRect) {
-              const relativeY = elementRect.top - containerRect.top;
-              const newIndex = Math.max(0, Math.round(relativeY / rowHeight));
-
-              if (newIndex !== index && newIndex >= 0) {
-                onOrderChange?.(newIndex);
-              }
-            }
-          }
+      onDragStart={() => {
+        if (!isResizing) {
+          setIsDragging(true);
         }
       }}
-      className="absolute h-10 cursor-move"
+      onDragEnd={(_event, info) => {
+        if (isResizing) {
+          return;
+        }
+
+        setIsDragging(false);
+
+        if (Math.abs(info.offset.x) > Math.abs(info.offset.y)) {
+          const timelineWidth = barRef.current?.parentElement?.offsetWidth || 1;
+          const dayWidth = timelineWidth / (totalDuration / GANTT_SECONDS_IN_DAY);
+          const daysDragged = Math.round(info.offset.x / dayWidth);
+
+          if (!daysDragged) {
+            return;
+          }
+
+          const nextStart = addDays(startRef.current, daysDragged);
+          const nextEnd = addDays(endRef.current, daysDragged);
+
+          setTaskStart(nextStart);
+          setTaskEnd(nextEnd);
+          startRef.current = nextStart;
+          endRef.current = nextEnd;
+          onUpdate(nextStart, nextEnd);
+          return;
+        }
+
+        if (Math.abs(info.offset.y) <= 10) {
+          return;
+        }
+
+        const container = barRef.current?.parentElement;
+        const element = barRef.current;
+        if (!container || !element) {
+          return;
+        }
+
+        const containerRect = container.getBoundingClientRect();
+        const elementRect = element.getBoundingClientRect();
+        const relativeY = elementRect.top - containerRect.top;
+        const nextIndex = Math.max(0, Math.round(relativeY / GANTT_ROW_HEIGHT));
+
+        if (nextIndex !== index) {
+          onOrderChange?.(nextIndex);
+        }
+      }}
+      className="absolute cursor-grab"
       style={{
         left,
         width: barWidth,
         top: 0,
-        position: "absolute",
         zIndex: isDragging ? 50 : 1,
-        cursor: isResizing ? "ew-resize" : "grabbing",
+        height: GANTT_BAR_HEIGHT,
       }}
-      animate={{
-        y: index * 48,
-      }}
+      animate={{ y: index * GANTT_ROW_HEIGHT }}
       transition={{
         type: "spring",
         damping: 30,
@@ -196,29 +209,24 @@ export function TaskBar({
         mass: 0.8,
       }}
     >
-      <div className="relative flex items-center w-full h-full">
-        <span className="absolute right-full pr-2 text-xs text-muted-foreground whitespace-nowrap">
-          {format(start, "MMM d")} -{" "}
-          {format(end, "MMM d")}
+      <div className="relative flex h-full w-full items-center">
+        <span className="absolute right-full whitespace-nowrap pr-2 text-xs text-muted-foreground">
+          {format(start, "MMM d")} - {format(end, "MMM d")}
         </span>
         <div
           className="absolute left-0 h-full w-2 cursor-ew-resize"
-          onPointerDown={(e) => handleResizeStart(e, "left")}
+          onPointerDown={(event) => handleResizeStart(event, "left")}
         />
         <div
           className="absolute right-0 h-full w-2 cursor-ew-resize"
-          onPointerDown={(e) => handleResizeStart(e, "right")}
+          onPointerDown={(event) => handleResizeStart(event, "right")}
         />
         <Card
-          className={`h-full w-full active:cursor-grabbing hover:ring-2 hover:ring-offset-1 hover:ring-primary/20 transition-shadow ${
-            task.status.toUpperCase() === "DONE"
-              ? "bg-green-100 hover:bg-green-100/90"
-              : task.status.toUpperCase() === "IN PROGRESS"
-                ? "bg-blue-100 hover:bg-blue-100/90"
-                : task.status.toUpperCase() === "BLOCKED"
-                  ? "bg-red-100 hover:bg-red-100/90"
-                  : "bg-gray-100 hover:bg-gray-100/90"
-          } ${isDragging ? "ring-2 ring-primary/30 ring-offset-2 shadow-lg" : ""}`}
+          className={cn(
+            "h-full w-full transition-shadow hover:ring-2 hover:ring-primary/20 hover:ring-offset-1 active:cursor-grabbing",
+            statusClass,
+            isDragging && "ring-2 ring-primary/30 ring-offset-2 shadow-lg",
+          )}
         />
       </div>
     </motion.div>

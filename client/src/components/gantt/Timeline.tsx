@@ -1,104 +1,43 @@
-import { format, differenceInSeconds, addSeconds } from "date-fns";
-import { motion } from "framer-motion";
-import { useRef } from "react";
+import { addSeconds, differenceInSeconds, format } from "date-fns";
+import {
+  GANTT_MAX_TICKS,
+  GANTT_MIN_TICKS,
+} from "@/components/gantt/constants";
 
 interface TimelineProps {
   startDate: Date;
   endDate: Date;
   zoom: number;
-  today?: Date;
-  projectEndDate?: Date;
-  onProjectEndDateChange?: (newDate: Date) => void;
 }
 
-export function Timeline({
-  startDate,
-  endDate,
-  zoom,
-  today = new Date(),
-  projectEndDate,
-  onProjectEndDateChange,
-}: TimelineProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  // Ensure dates start at midnight for exact alignment
-  const start = new Date(startDate);
-  // start.setHours(0, 0, 0, 0);
-  const end = new Date(endDate);
-  // end.setHours(23, 59, 59, 999);
-
-  const totalDuration = differenceInSeconds(end, start);
-
-  // calculate number of labels
+export function Timeline({ startDate, endDate, zoom }: TimelineProps) {
+  const totalDuration = Math.max(1, differenceInSeconds(endDate, startDate));
   const tickCount = Math.max(
-    5, // Minimum ticks when extremely zoomed out
-    Math.min(
-      15, // Never more ticks than days
-      Math.ceil(15 * zoom), // Non-linear scaling with zoom
-    ),
+    GANTT_MIN_TICKS,
+    Math.min(GANTT_MAX_TICKS, Math.ceil(GANTT_MAX_TICKS * zoom)),
   );
-
-  // Calculate base width for exact day intervals
-  const baseWidth = (1 / tickCount) * 100;
-
-  const minPerStep = totalDuration / tickCount;
-  // create an array which starts at start and each element increments by minPerStep
-  const steps = Array.from({ length: tickCount }, (_, i) =>
-    addSeconds(start, i * minPerStep + minPerStep/2),
+  const tickWidth = 100 / tickCount;
+  const stepDuration = totalDuration / tickCount;
+  const steps = Array.from({ length: tickCount }, (_, index) =>
+    addSeconds(startDate, stepDuration * index + stepDuration / 2),
   );
-
-  // const step = Math.max(1, Math.floor((days.length - 1) / (tickCount)));
-  // const filteredDays = days.filter((_, index) => index % step === 0);
-
-  // Ensure timeline grid aligns with task bars
-  const timelineStartTime = start.getTime();
 
   return (
-    <div className="relative h-8">
-      {/* Date labels and ticks */}
-      <div
-        ref={containerRef}
-        className="absolute inset-0"
-        style={
-          {
-            // width: `${100 * zoom}%`,
-            // minWidth: "100%",
-            // overflow: "visible",
-          }
-        }
-      >
-
-        {/* Date ticks and labels */}
-        {steps.map((day, index) => {
-          const position = baseWidth * index;
-          // const showTick =
-          //   index % tickInterval === 0 ||
-          //   index === 0 ||
-          //   index === days.length - 1;
-
-          return (
-            <div
-              key={index}
-              className="absolute"
-              style={{
-                left: `${position}%`,
-                width: `${baseWidth}%`,
-                height: "6px",
-                // transform: "translateX(50%)",
-                // borderLeftWidth: "1px" : "0px",
-              }}
-            >
-              {/*<div className="absolute left-0 w-full flex justify-center">*/}
-              <div className="absolute w-full flex justify-center">
-                  <span className="text-xs whitespace-nowrap">
-                    {format(day, "MMM dd HH:mm")}
-                  </span>
-              </div>
-              <div className="h-5 w-px bg-gray-400"></div>
-            </div>
-          );
-        })}
-      </div>
+    <div className="relative h-full">
+      {steps.map((step, index) => (
+        <div
+          key={`${step.toISOString()}-${index}`}
+          className="absolute inset-y-0"
+          style={{ left: `${tickWidth * index}%`, width: `${tickWidth}%` }}
+        >
+          <div className="absolute inset-x-0 top-0 flex justify-center">
+            <span className="whitespace-nowrap text-xs text-muted-foreground">
+              {format(step, "MMM dd HH:mm")}
+            </span>
+          </div>
+          <div className="absolute bottom-0 left-0 top-5 w-px bg-border" />
+        </div>
+      ))}
     </div>
   );
 }

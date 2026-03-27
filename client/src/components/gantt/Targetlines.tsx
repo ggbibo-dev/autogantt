@@ -1,94 +1,71 @@
-import React, { useRef } from "react";
+import type { RefObject } from "react";
 import { motion } from "framer-motion";
+import { getTimelinePercent } from "@/components/gantt/utils";
 
 interface TargetLinesProps {
-    projectEndDate: Date | undefined;
-    timelineStartTime: number;
-    start: Date;
-    end: Date;
-    today: Date;
-    maxBoundingWidth: number;
-    onProjectEndDateChange?: (newDate: Date) => void;
+  projectEndDate?: Date;
+  start: Date;
+  end: Date;
+  today: Date;
+  containerRef: RefObject<HTMLDivElement>;
+  onProjectEndDateChange?: (newDate: Date) => void;
 }
 
-const TargetLines: React.FC<TargetLinesProps> = ({
-    projectEndDate,
-    timelineStartTime,
-    start,
-    end,
-    today,
-    maxBoundingWidth,
-    onProjectEndDateChange,
-}) => {
+export function TargetLines({
+  projectEndDate,
+  start,
+  end,
+  today,
+  containerRef,
+  onProjectEndDateChange,
+}: TargetLinesProps) {
+  if (!projectEndDate) {
+    return null;
+  }
 
-    const containerRef = useRef<HTMLDivElement>(null);
-    return (
-        <>
-            {/* Project end date line */}
-            {projectEndDate && (
-                <motion.div
-                    ref={containerRef}
-                    className="absolute cursor-ew-resize h-full z-[5] -mt-[15px]"
-                    style={{
-                        left: `${((new Date(projectEndDate.getTime() + 24 * 60 * 60 * 1000).getTime() - timelineStartTime) / (end.getTime() - timelineStartTime)) * 100}%`,
-                    }}
-                    drag="x"
-                    dragConstraints={{
-                        left: 0,
-                        right: maxBoundingWidth,
-                    }}
-                    dragElastic={0.1}
-                    dragMomentum={false}
-                    whileDrag={{
-                        scale: 1.02,
-                        cursor: "ew-resize",
-                        transition: { duration: 0.1 },
-                    }}
-                    onDragEnd={(e, info) => {
-                        if (!onProjectEndDateChange) return;
+  return (
+    <motion.div
+      className="absolute inset-y-0 z-10 cursor-ew-resize"
+      style={{
+        left: `${getTimelinePercent(projectEndDate, start, end)}%`,
+      }}
+      drag="x"
+      dragConstraints={containerRef}
+      dragElastic={0.1}
+      dragMomentum={false}
+      whileDrag={{
+        scale: 1.02,
+        cursor: "ew-resize",
+        transition: { duration: 0.1 },
+      }}
+      onDragEnd={(event) => {
+        if (!onProjectEndDateChange || !containerRef.current) {
+          return;
+        }
 
-                        const element = e.currentTarget as HTMLDivElement;
-                        if (!element) return;
+        const timelineRect = containerRef.current.getBoundingClientRect();
+        const currentTarget = event.currentTarget as HTMLDivElement | null;
+        if (!currentTarget) {
+          return;
+        }
 
-                        const container = containerRef.current;
-                        if (!container) return;
+        const elementRect = currentTarget.getBoundingClientRect();
+        const relativePosition =
+          (elementRect.left - timelineRect.left) / timelineRect.width;
+        const timeRange = end.getTime() - start.getTime();
+        const nextEndDate = new Date(start.getTime() + timeRange * relativePosition);
 
-                        const timelineRect = container.getBoundingClientRect();
-                        const elementRect = element.getBoundingClientRect();
-
-                        const relativePosition =
-                            (elementRect.left - timelineRect.left) / timelineRect.width;
-
-                        const timeRange = end.getTime() - start.getTime();
-                        const newTime = start.getTime() + timeRange * relativePosition;
-                        const newEndDate = new Date(newTime);
-
-                        if (
-                            newEndDate >= start &&
-                            newEndDate <= end &&
-                            newEndDate >= today
-                        ) {
-                            onProjectEndDateChange(newEndDate);
-                        }
-                    }}
-                >
-                    <div className="absolute left-0 transform -translate-x-1/2">
-                        <span className="text-xs text-red-400/80 border-b border-red-400/80">
-                            End
-                        </span>
-                    </div>
-                    <div
-                        className="absolute border-l border-red-400/40"
-                        style={{
-                            top: "20px",
-                            height: "100%",
-                            left: "0",
-                        }}
-                    />
-                </motion.div>
-            )}
-        </>
-    );
-};
-
-export {TargetLines};
+        if (nextEndDate >= start && nextEndDate <= end && nextEndDate >= today) {
+          onProjectEndDateChange(nextEndDate);
+        }
+      }}
+    >
+      <div className="absolute -top-6 left-1/2 -translate-x-1/2">
+        <span className="border-b border-red-400/80 text-xs text-red-400/80">
+          End
+        </span>
+      </div>
+      <div className="absolute inset-y-0 left-0 border-l border-red-400/50" />
+    </motion.div>
+  );
+}
