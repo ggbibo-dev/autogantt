@@ -22,6 +22,7 @@ import {
   GANTT_SCROLL_HEIGHT,
   GANTT_ZOOM_DEFAULT,
 } from "@/components/gantt/constants";
+import { createDemoGanttData } from "@/components/gantt/demo-data";
 import { GanttTaskCanvas } from "@/components/gantt/GanttTaskCanvas";
 import { GanttTaskList } from "@/components/gantt/GanttTaskList";
 import { GanttToolbar } from "@/components/gantt/GanttToolbar";
@@ -41,38 +42,59 @@ const EMPTY_EPICS: Epic[] = [];
 const EMPTY_TASKS: JiraTask[] = [];
 
 export function GanttChart() {
+  const demoDataRef = useRef(createDemoGanttData());
   const initialDateRange = createDefaultDateRange();
+  const baseDuration = differenceInSeconds(initialDateRange.end, initialDateRange.start);
   const exportRef = useRef<HTMLDivElement>(null);
-  const [dateRange, setDateRange] = useState(initialDateRange);
+  const [dateRange, setDateRange] = useState(() =>
+    zoomDateRange(initialDateRange, GANTT_ZOOM_DEFAULT, baseDuration),
+  );
   const [zoom, setZoom] = useState(GANTT_ZOOM_DEFAULT);
   const [taskOrder, setTaskOrder] = useState<Record<number, number>>({});
+  const [demoTasks, setDemoTasks] = useState(() => demoDataRef.current.tasks);
   const [customProjectEndDate, setCustomProjectEndDate] = useState<
     Date | undefined
   >();
-  const baseDuration = differenceInSeconds(initialDateRange.end, initialDateRange.start);
   const queryClient = useQueryClient();
 
-  const { data: epicsData, isLoading: epicsLoading } = useQuery<Epic[]>({
+  const {
+    data: epicsData,
+    isLoading: epicsLoading,
+    isError: epicsError,
+  } = useQuery<Epic[]>({
     queryKey: ["epics"],
     queryFn: () => fetchJiraEpics(),
+    retry: false,
   });
 
-  const { data: tasksData, isLoading: tasksLoading } = useQuery<JiraTask[]>({
+  const {
+    data: tasksData,
+    isLoading: tasksLoading,
+    isError: tasksError,
+  } = useQuery<JiraTask[]>({
     queryKey: ["tasks"],
     queryFn: () => fetchJiraTasks(),
+    retry: false,
   });
 
   const epics = epicsData ?? EMPTY_EPICS;
   const tasks = tasksData ?? EMPTY_TASKS;
+  const usingDemoData =
+    epicsError ||
+    tasksError ||
+    epics.length === 0 ||
+    tasks.length === 0;
+  const activeEpics = usingDemoData ? demoDataRef.current.epics : epics;
+  const activeTasks = usingDemoData ? demoTasks : tasks;
 
   useEffect(() => {
-    if (tasks.length) {
-      setTaskOrder(buildInitialTaskOrder(tasks));
+    if (activeTasks.length) {
+      setTaskOrder(buildInitialTaskOrder(activeTasks));
       return;
     }
 
     setTaskOrder({});
-  }, [tasks]);
+  }, [activeTasks]);
 
   const updateTaskMutation = useMutation({
     mutationFn: async (data: {
@@ -89,18 +111,18 @@ export function GanttChart() {
     return <div>Loading...</div>;
   }
 
-  const groups = groupTasksByEpic(epics, tasks, taskOrder);
+  const groups = groupTasksByEpic(activeEpics, activeTasks, taskOrder);
   const chartHeight = getChartHeight(groups);
   const projectEndDate =
     customProjectEndDate ??
-    tasks.reduce<Date | undefined>((latest, task) => {
+    activeTasks.reduce<Date | undefined>((latest, task) => {
       const taskEnd = new Date(task.endDate);
       return latest && latest > taskEnd ? latest : taskEnd;
     }, undefined);
 
   return (
     <Card
-      className="w-full"
+      className="neo-surface w-full overflow-hidden border-white/60 bg-transparent"
       style={
         {
           "--gantt-chart-min-height": `${GANTT_MIN_HEIGHT}px`,
@@ -109,9 +131,30 @@ export function GanttChart() {
         } as CSSProperties
       }
     >
-      <div className="flex flex-col gap-4 p-4">
+      <div className="flex flex-col gap-5 p-5">
+        {usingDemoData && (
+          <div className="neo-inset flex flex-wrap items-center justify-between gap-3 rounded-[24px] px-5 py-4">
+            <div className="space-y-1">
+              <div className="neo-badge w-fit">Demo Mode</div>
+              <p className="text-sm font-medium text-foreground">
+                Sample roadmap loaded automatically.
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Upload a CSV at any time to replace it with imported work.
+              </p>
+            </div>
+            <div className="flex items-center gap-3 text-sm text-muted-foreground">
+              <span>{activeEpics.length} epics</span>
+              <span>{activeTasks.length} tasks</span>
+            </div>
+          </div>
+        )}
+
         <GanttToolbar
           zoom={zoom}
+          taskCount={activeTasks.length}
+          epicCount={activeEpics.length}
+          modeLabel={usingDemoData ? "Demo timeline" : "Imported timeline"}
           onBack={() => setDateRange((current) => shiftDateRange(current, -1, zoom))}
           onForward={() =>
             setDateRange((current) => shiftDateRange(current, 1, zoom))
@@ -121,7 +164,7 @@ export function GanttChart() {
             setZoom(nextZoom);
           }}
           onExport={async () => {
-            const exportDateRange = createExportDateRange(tasks);
+            const exportDateRange = createExportDateRange(activeTasks);
             if (!exportDateRange || !exportRef.current) {
               return;
             }
@@ -156,33 +199,33 @@ export function GanttChart() {
           }}
         />
 
-        <div className="overflow-auto rounded-xl border bg-background/70 shadow-inner max-h-[var(--gantt-scroll-height)]">
-          <div ref={exportRef} className="p-3">
-        <ResizablePanelGroup
-          direction="horizontal"
+        <div className="neo-inset overflow-auto rounded-[28px] p-3 max-h-[var(--gantt-scroll-height)]">
+          <div ref={exportRef} className="neo-grid rounded-[24px] p-3">
+            <ResizablePanelGroup
+              direction="horizontal"
               className="min-h-[var(--gantt-chart-min-height)]"
-        >
-          <ResizablePanel
-            defaultSize={25}
-            minSize={15}
-            maxSize={50}
+            >
+              <ResizablePanel
+                defaultSize={25}
+                minSize={15}
+                maxSize={50}
                 className="pr-3"
-          >
+              >
                 <div
-                  className="border-b border-border/60"
+                  className="neo-inset rounded-[20px] border border-white/50"
                   style={{ height: GANTT_HEADER_HEIGHT }}
                 />
                 <GanttTaskList groups={groups} />
-          </ResizablePanel>
+              </ResizablePanel>
 
               <ResizableHandle withHandle className="h-auto" />
 
-          <ResizablePanel
-            defaultSize={75}
+              <ResizablePanel
+                defaultSize={75}
                 className="overflow-hidden pl-3"
-          >
+              >
                 <div
-                  className="sticky top-0 z-10 border-b border-border/60 bg-background/95 backdrop-blur"
+                  className="neo-inset sticky top-0 z-10 rounded-[20px] border border-white/50 px-4"
                   style={{ height: GANTT_HEADER_HEIGHT }}
                 >
                   <Timeline
@@ -199,17 +242,34 @@ export function GanttChart() {
                   endDate={dateRange.end}
                   projectEndDate={projectEndDate}
                   onProjectEndDateChange={setCustomProjectEndDate}
-                  onTaskUpdate={(taskId, startDate, endDate) =>
-                    updateTaskMutation.mutate({ taskId, startDate, endDate })
-                  }
+                  onTaskUpdate={(taskId, startDate, endDate) => {
+                    if (usingDemoData) {
+                      setDemoTasks((current) =>
+                        current.map((task) =>
+                          task.id === taskId
+                            ? {
+                                ...task,
+                                startDate,
+                                endDate,
+                                originalStartDate: startDate,
+                                originalEndDate: endDate,
+                              }
+                            : task,
+                        ),
+                      );
+                      return;
+                    }
+
+                    updateTaskMutation.mutate({ taskId, startDate, endDate });
+                  }}
                   onTaskOrderChange={(task, newIndex) => {
                     setTaskOrder((current) =>
-                      moveTaskWithinEpic(tasks, current, task.id, task.epicId, newIndex),
+                      moveTaskWithinEpic(activeTasks, current, task.id, task.epicId, newIndex),
                     );
                   }}
                 />
-          </ResizablePanel>
-        </ResizablePanelGroup>
+              </ResizablePanel>
+            </ResizablePanelGroup>
           </div>
         </div>
       </div>

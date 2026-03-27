@@ -1,4 +1,11 @@
-import { addDays, addSeconds, differenceInSeconds, subDays } from "date-fns";
+import {
+  addDays,
+  addSeconds,
+  differenceInSeconds,
+  endOfDay,
+  startOfDay,
+  subDays,
+} from "date-fns";
 import type { Epic } from "@db/schema";
 import type { JiraTask } from "@/types/jira";
 import {
@@ -18,11 +25,18 @@ export interface GanttGroup {
   tasks: JiraTask[];
 }
 
-export function createDefaultDateRange(referenceDate = new Date()): DateRange {
+function normalizeDateRange(start: Date, end: Date): DateRange {
   return {
-    start: subDays(referenceDate, GANTT_DEFAULT_RANGE_DAYS),
-    end: addDays(referenceDate, GANTT_DEFAULT_RANGE_DAYS),
+    start: startOfDay(start),
+    end: endOfDay(end),
   };
+}
+
+export function createDefaultDateRange(referenceDate = new Date()): DateRange {
+  return normalizeDateRange(
+    subDays(referenceDate, GANTT_DEFAULT_RANGE_DAYS),
+    addDays(referenceDate, GANTT_DEFAULT_RANGE_DAYS),
+  );
 }
 
 export function buildInitialTaskOrder(tasks: JiraTask[]): Record<number, number> {
@@ -124,10 +138,10 @@ export function createExportDateRange(tasks: JiraTask[]): DateRange | null {
     return null;
   }
 
-  return {
-    start: subDays(bounds.start, GANTT_EXPORT_PADDING_DAYS),
-    end: addDays(bounds.end, GANTT_EXPORT_PADDING_DAYS),
-  };
+  return normalizeDateRange(
+    subDays(bounds.start, GANTT_EXPORT_PADDING_DAYS),
+    addDays(bounds.end, GANTT_EXPORT_PADDING_DAYS),
+  );
 }
 
 export function moveTaskWithinEpic(
@@ -163,10 +177,10 @@ export function moveTaskWithinEpic(
 export function shiftDateRange(dateRange: DateRange, direction: 1 | -1, zoom: number) {
   const deltaDays = (GANTT_DEFAULT_RANGE_DAYS * direction) / zoom;
 
-  return {
-    start: addDays(dateRange.start, deltaDays),
-    end: addDays(dateRange.end, deltaDays),
-  };
+  return normalizeDateRange(
+    addDays(dateRange.start, deltaDays),
+    addDays(dateRange.end, deltaDays),
+  );
 }
 
 export function zoomDateRange(
@@ -178,8 +192,8 @@ export function zoomDateRange(
   const center = addSeconds(dateRange.start, currentDuration / 2);
   const adjustedHalfDuration = baseDurationSeconds / nextZoom / 2;
 
-  return {
-    start: addSeconds(center, -adjustedHalfDuration),
-    end: addSeconds(center, adjustedHalfDuration),
-  };
+  return normalizeDateRange(
+    addSeconds(center, -adjustedHalfDuration),
+    addSeconds(center, adjustedHalfDuration),
+  );
 }
