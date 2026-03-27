@@ -15,6 +15,7 @@ interface TaskBarProps {
   startDate: Date;
   endDate: Date;
   index: number;
+  offsetY?: number;
   onUpdate: (startDate: Date, endDate: Date) => void;
   onOrderChange?: (newIndex: number) => void;
 }
@@ -46,6 +47,7 @@ export function TaskBar({
   startDate,
   endDate,
   index,
+  offsetY = 0,
   onUpdate,
   onOrderChange,
 }: TaskBarProps) {
@@ -207,7 +209,7 @@ export function TaskBar({
       }}
       animate={{
         left,
-        y: index * GANTT_ROW_HEIGHT,
+        y: offsetY + index * GANTT_ROW_HEIGHT,
       }}
       transition={{
         y: {

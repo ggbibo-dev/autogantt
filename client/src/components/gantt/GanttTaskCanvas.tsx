@@ -59,27 +59,20 @@ export function GanttTaskCanvas({
           >
             <GanttGroupHeader title={group.epic.name} variant="canvas" />
           </div>
-          <div
-            className="relative"
-            style={{
-              height: group.tasks.length * GANTT_ROW_HEIGHT,
-              marginTop: GANTT_GROUP_HEADER_HEIGHT,
-            }}
-          >
-            {group.tasks.map((task, index) => (
-              <TaskBar
-                key={task.id}
-                task={task}
-                index={index}
-                startDate={startDate}
-                endDate={endDate}
-                onUpdate={(nextStart, nextEnd) =>
-                  onTaskUpdate(task.id, nextStart, nextEnd)
-                }
-                onOrderChange={(newIndex) => onTaskOrderChange(task, newIndex)}
-              />
-            ))}
-          </div>
+          {group.tasks.map((task, index) => (
+            <TaskBar
+              key={task.id}
+              task={task}
+              index={index}
+              offsetY={GANTT_GROUP_HEADER_HEIGHT}
+              startDate={startDate}
+              endDate={endDate}
+              onUpdate={(nextStart, nextEnd) =>
+                onTaskUpdate(task.id, nextStart, nextEnd)
+              }
+              onOrderChange={(newIndex) => onTaskOrderChange(task, newIndex)}
+            />
+          ))}
         </div>
       ))}
     </div>
