@@ -11,7 +11,9 @@ import type { JiraTask } from "@/types/jira";
 import {
   GANTT_DEFAULT_RANGE_DAYS,
   GANTT_EXPORT_PADDING_DAYS,
+  GANTT_GROUP_GAP,
   GANTT_GROUP_HEADER_HEIGHT,
+  GANTT_GROUP_PADDING,
   GANTT_MIN_HEIGHT,
   GANTT_ROW_HEIGHT,
 } from "@/components/gantt/constants";
@@ -87,11 +89,108 @@ export function getGroupHeight(taskCount: number) {
 
 export function getChartHeight(groups: GanttGroup[]) {
   const contentHeight = groups.reduce(
-    (total, group) => total + getGroupHeight(group.tasks.length),
+    (total, group) =>
+      total +
+      getGroupHeight(group.tasks.length) +
+      GANTT_GROUP_PADDING * 2,
     0,
   );
+  const groupGapHeight = Math.max(0, groups.length - 1) * GANTT_GROUP_GAP;
 
-  return Math.max(GANTT_MIN_HEIGHT, contentHeight);
+  return Math.max(GANTT_MIN_HEIGHT, contentHeight + groupGapHeight);
+}
+
+export function syncTaskOrder(
+  taskOrder: Record<number, number>,
+  tasks: JiraTask[],
+) {
+  const nextOrder: Record<number, number> = {};
+  const tasksByEpic = new Map<number, JiraTask[]>();
+
+  for (const task of tasks) {
+    const epicId = task.epicId ?? 0;
+    const scopedTasks = tasksByEpic.get(epicId) ?? [];
+    scopedTasks.push(task);
+    tasksByEpic.set(epicId, scopedTasks);
+  }
+
+  for (const epicTasks of Array.from(tasksByEpic.values())) {
+    const existingTasks = epicTasks
+      .filter((task: JiraTask) => taskOrder[task.id] !== undefined)
+      .sort(
+        (left: JiraTask, right: JiraTask) =>
+          (taskOrder[left.id] ?? 0) - (taskOrder[right.id] ?? 0),
+      );
+    const newTasks = epicTasks.filter(
+      (task: JiraTask) => taskOrder[task.id] === undefined,
+    );
+
+    [...existingTasks, ...newTasks].forEach((task, index) => {
+      nextOrder[task.id] = index;
+    });
+  }
+
+  return nextOrder;
+}
+
+export function createTaskOrderStorageKey(
+  tasks: JiraTask[],
+  scope: "demo" | "imported",
+) {
+  const signature = tasks
+    .map((task) => task.id)
+    .sort((left, right) => left - right)
+    .join("-");
+
+  return `gantt-task-order:${scope}:${signature}`;
+}
+
+export function readTaskOrderStorage(storageKey: string) {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  const rawValue = window.localStorage.getItem(storageKey);
+  if (!rawValue) {
+    return null;
+  }
+
+  try {
+    const parsedValue = JSON.parse(rawValue);
+    if (!parsedValue || typeof parsedValue !== "object") {
+      return null;
+    }
+
+    return Object.entries(parsedValue).reduce<Record<number, number>>(
+      (nextOrder, [taskId, index]) => {
+        const normalizedTaskId = Number(taskId);
+        const normalizedIndex = Number(index);
+
+        if (
+          Number.isFinite(normalizedTaskId) &&
+          Number.isFinite(normalizedIndex)
+        ) {
+          nextOrder[normalizedTaskId] = normalizedIndex;
+        }
+
+        return nextOrder;
+      },
+      {},
+    );
+  } catch {
+    return null;
+  }
+}
+
+export function writeTaskOrderStorage(
+  storageKey: string,
+  taskOrder: Record<number, number>,
+) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.localStorage.setItem(storageKey, JSON.stringify(taskOrder));
 }
 
 export function getTimelinePercent(
