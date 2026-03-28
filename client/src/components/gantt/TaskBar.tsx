@@ -1,12 +1,13 @@
 import { PointerEvent, useEffect, useRef, useState } from "react";
 import { addDays, addSeconds, differenceInSeconds, format } from "date-fns";
-import { motion } from "framer-motion";
+import { motion, useMotionValue, useSpring } from "framer-motion";
 import { Card } from "@/components/ui/card";
 import {
   GANTT_BAR_HEIGHT,
   GANTT_ROW_HEIGHT,
   GANTT_SECONDS_IN_DAY,
 } from "@/components/gantt/constants";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import type { JiraTask } from "@/types/jira";
 
@@ -28,6 +29,17 @@ const TASK_STATUS_STYLES: Record<string, string> = {
   BLOCKED:
     "border-rose-200/80 bg-[linear-gradient(145deg,rgba(255,245,246,0.95),rgba(247,210,219,0.88))] text-rose-950",
 };
+const GESTURE_LOCK_PX = 10;
+const TOUCH_LONG_PRESS_MS = 180;
+const AXIS_RATIO = 1.15;
+
+type GestureMode =
+  | "idle"
+  | "press"
+  | "move"
+  | "reorder"
+  | "resize-left"
+  | "resize-right";
 
 function normalizeTaskDate(value: Date | string, hour: number) {
   const date = new Date(value);
@@ -52,14 +64,29 @@ export function TaskBar({
   onOrderChange,
 }: TaskBarProps) {
   const barRef = useRef<HTMLDivElement>(null);
-  const [isDragging, setIsDragging] = useState(false);
   const [start, setTaskStart] = useState(() => normalizeTaskDate(task.startDate, 0));
   const [end, setTaskEnd] = useState(() => normalizeTaskDate(task.endDate, 12));
-  const [isResizing, setIsResizing] = useState(false);
   const startRef = useRef(start);
   const endRef = useRef(end);
+  const pressRef = useRef({
+    pointerId: -1,
+    startX: 0,
+    startY: 0,
+    longPressReady: false,
+    blocked: false,
+  });
+  const longPressTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [gestureMode, setGestureMode] = useState<GestureMode>("idle");
+  const isMobile = useIsMobile();
+  const previewX = useMotionValue(0);
+  const previewY = useMotionValue(offsetY + index * GANTT_ROW_HEIGHT);
+  const animatedX = useSpring(previewX, { damping: 34, stiffness: 480, mass: 0.7 });
+  const animatedY = useSpring(previewY, { damping: 30, stiffness: 400, mass: 0.8 });
 
   const totalDuration = Math.max(1, differenceInSeconds(endDate, startDate));
+  const dayWidth =
+    (barRef.current?.parentElement?.offsetWidth || 1) /
+    (totalDuration / GANTT_SECONDS_IN_DAY);
   const rawLeft = getPercentOffset(start, startDate, endDate);
   const rawRight = getPercentOffset(end, startDate, endDate);
   const left = `${Math.max(0, Math.min(100, rawLeft))}%`;
@@ -77,147 +104,97 @@ export function TaskBar({
     endRef.current = taskEnd;
   }, [task.endDate, task.startDate]);
 
-  function handleResizeStart(
+  useEffect(() => {
+    if (gestureMode !== "reorder") {
+      previewY.set(offsetY + index * GANTT_ROW_HEIGHT);
+    }
+  }, [gestureMode, index, offsetY, previewY]);
+
+  useEffect(() => {
+    if (gestureMode !== "move") {
+      previewX.set(0);
+    }
+  }, [gestureMode, previewX]);
+
+  function clearLongPressTimeout() {
+    if (longPressTimeoutRef.current) {
+      clearTimeout(longPressTimeoutRef.current);
+      longPressTimeoutRef.current = null;
+    }
+  }
+
+  function resetGestureState() {
+    clearLongPressTimeout();
+    pressRef.current.pointerId = -1;
+    pressRef.current.longPressReady = false;
+    pressRef.current.blocked = false;
+    setGestureMode("idle");
+    previewX.set(0);
+    previewY.set(offsetY + index * GANTT_ROW_HEIGHT);
+  }
+
+  function commitMove(deltaX: number) {
+    const daysDragged = Math.round(deltaX / dayWidth);
+    if (!daysDragged) {
+      return;
+    }
+    const nextStart = addDays(startRef.current, daysDragged);
+    const nextEnd = addDays(endRef.current, daysDragged);
+    setTaskStart(nextStart);
+    setTaskEnd(nextEnd);
+    startRef.current = nextStart;
+    endRef.current = nextEnd;
+    onUpdate(nextStart, nextEnd);
+  }
+
+  function commitReorder(deltaY: number) {
+    const nextIndex = Math.max(
+      0,
+      Math.round((offsetY + index * GANTT_ROW_HEIGHT + deltaY - offsetY) / GANTT_ROW_HEIGHT),
+    );
+    if (nextIndex !== index) {
+      onOrderChange?.(nextIndex);
+    }
+  }
+
+  function beginResize(
     event: PointerEvent<HTMLDivElement>,
     direction: "left" | "right",
   ) {
     event.stopPropagation();
-    const initialX = event.clientX;
-    const initialStart = start;
-    const initialEnd = end;
+    event.currentTarget.setPointerCapture(event.pointerId);
+    pressRef.current.pointerId = event.pointerId;
+    pressRef.current.startX = event.clientX;
+    setGestureMode(direction === "left" ? "resize-left" : "resize-right");
+  }
 
-    setIsResizing(true);
-
-    function onMouseMove(nextEvent: MouseEvent) {
-      const deltaX = nextEvent.clientX - initialX;
-      const timelineWidth = barRef.current?.parentElement?.offsetWidth || 1;
-      const dayWidth = timelineWidth / (totalDuration / GANTT_SECONDS_IN_DAY);
-      const daysDragged = deltaX / dayWidth;
-
-      if (direction === "left") {
-        const newStart = addSeconds(
-          initialStart,
-          daysDragged * GANTT_SECONDS_IN_DAY,
-        );
-        if (newStart < initialEnd) {
-          setTaskStart(newStart);
-          startRef.current = newStart;
-        }
-        return;
+  function updateResizePreview(deltaX: number) {
+    const daysDragged = deltaX / dayWidth;
+    if (gestureMode === "resize-left") {
+      const nextStart = addSeconds(start, daysDragged * GANTT_SECONDS_IN_DAY);
+      if (nextStart < endRef.current) {
+        setTaskStart(nextStart);
+        startRef.current = nextStart;
       }
-
-      const newEnd = addSeconds(
-        initialEnd,
-        daysDragged * GANTT_SECONDS_IN_DAY,
-      );
-      if (newEnd > initialStart) {
-        setTaskEnd(newEnd);
-        endRef.current = newEnd;
+      return;
+    }
+    if (gestureMode === "resize-right") {
+      const nextEnd = addSeconds(end, daysDragged * GANTT_SECONDS_IN_DAY);
+      if (nextEnd > startRef.current) {
+        setTaskEnd(nextEnd);
+        endRef.current = nextEnd;
       }
     }
-
-    function onMouseUp() {
-      document.removeEventListener("mousemove", onMouseMove);
-      document.removeEventListener("mouseup", onMouseUp);
-      setIsResizing(false);
-
-      if (direction === "left") {
-        onUpdate(startRef.current, initialEnd);
-        return;
-      }
-
-      onUpdate(initialStart, endRef.current);
-    }
-
-    document.addEventListener("mousemove", onMouseMove);
-    document.addEventListener("mouseup", onMouseUp);
   }
 
   return (
     <motion.div
       ref={barRef}
       initial={false}
-      drag={!isResizing}
-      dragDirectionLock
-      dragConstraints={{ left: 0 }}
-      dragTransition={{ bounceStiffness: 600, bounceDamping: 30 }}
-      dragMomentum={false}
-      dragElastic={0.06}
-      whileDrag={{
-        scale: 1.01,
-        boxShadow: "0 16px 28px rgba(120, 139, 166, 0.18)",
-        cursor: isResizing ? "ew-resize" : "grabbing",
-      }}
-      onDragStart={() => {
-        if (!isResizing) {
-          setIsDragging(true);
-        }
-      }}
-      onDragEnd={(_event, info) => {
-        if (isResizing) {
-          return;
-        }
-
-        setIsDragging(false);
-
-        if (Math.abs(info.offset.x) > Math.abs(info.offset.y)) {
-          const timelineWidth = barRef.current?.parentElement?.offsetWidth || 1;
-          const dayWidth = timelineWidth / (totalDuration / GANTT_SECONDS_IN_DAY);
-          const daysDragged = Math.round(info.offset.x / dayWidth);
-
-          if (!daysDragged) {
-            return;
-          }
-
-          const nextStart = addDays(startRef.current, daysDragged);
-          const nextEnd = addDays(endRef.current, daysDragged);
-
-          setTaskStart(nextStart);
-          setTaskEnd(nextEnd);
-          startRef.current = nextStart;
-          endRef.current = nextEnd;
-          onUpdate(nextStart, nextEnd);
-          return;
-        }
-
-        if (Math.abs(info.offset.y) <= 10) {
-          return;
-        }
-
-        const container = barRef.current?.parentElement;
-        const element = barRef.current;
-        if (!container || !element) {
-          return;
-        }
-
-        const containerRect = container.getBoundingClientRect();
-        const elementRect = element.getBoundingClientRect();
-        const relativeY = elementRect.top - containerRect.top;
-        const nextIndex = Math.max(0, Math.round(relativeY / GANTT_ROW_HEIGHT));
-
-        if (nextIndex !== index) {
-          onOrderChange?.(nextIndex);
-        }
-      }}
-      className="absolute cursor-grab"
-      style={{
-        width: barWidth,
-        top: 0,
-        zIndex: isDragging ? 50 : 1,
-        height: GANTT_BAR_HEIGHT,
-        willChange: "transform, left",
-      }}
       animate={{
         left,
-        y: offsetY + index * GANTT_ROW_HEIGHT,
       }}
       transition={{
-        y: {
-          type: "spring",
-          damping: 30,
-          stiffness: 400,
-          mass: 0.8,
-        },
         left: {
           type: "spring",
           damping: 34,
@@ -225,25 +202,127 @@ export function TaskBar({
           mass: 0.7,
         },
       }}
+      whileTap={{
+        scale: 1.01,
+        boxShadow: "0 16px 28px rgba(120, 139, 166, 0.18)",
+      }}
+      className="absolute cursor-grab"
+      style={{
+        width: barWidth,
+        top: 0,
+        x: animatedX,
+        y: animatedY,
+        zIndex: gestureMode === "idle" ? 1 : 50,
+        height: GANTT_BAR_HEIGHT,
+        willChange: "transform, left",
+        touchAction: "none",
+      }}
     >
       <div className="relative flex h-full w-full items-center">
-        <span className="absolute right-full whitespace-nowrap pr-3 text-xs font-medium text-muted-foreground">
+        <span
+          className={cn(
+            "absolute right-full whitespace-nowrap pr-3 text-xs font-medium text-muted-foreground transition-opacity",
+            gestureMode === "idle" ? "opacity-0" : "opacity-100",
+          )}
+        >
           {format(start, "MMM d")} - {format(end, "MMM d")}
         </span>
         <div
-          className="absolute left-0 h-full w-2 cursor-ew-resize"
-          onPointerDown={(event) => handleResizeStart(event, "left")}
+          className="absolute left-0 z-10 h-full w-3 cursor-ew-resize"
+          onPointerDown={(event) => beginResize(event, "left")}
+          onPointerMove={(event) => {
+            if (event.pointerId !== pressRef.current.pointerId) return;
+            updateResizePreview(event.clientX - pressRef.current.startX);
+          }}
+          onPointerUp={() => {
+            if (gestureMode === "resize-left") {
+              onUpdate(startRef.current, endRef.current);
+            }
+            resetGestureState();
+          }}
+          onPointerCancel={resetGestureState}
         />
         <div
-          className="absolute right-0 h-full w-2 cursor-ew-resize"
-          onPointerDown={(event) => handleResizeStart(event, "right")}
+          className="absolute right-0 z-10 h-full w-3 cursor-ew-resize"
+          onPointerDown={(event) => beginResize(event, "right")}
+          onPointerMove={(event) => {
+            if (event.pointerId !== pressRef.current.pointerId) return;
+            updateResizePreview(event.clientX - pressRef.current.startX);
+          }}
+          onPointerUp={() => {
+            if (gestureMode === "resize-right") {
+              onUpdate(startRef.current, endRef.current);
+            }
+            resetGestureState();
+          }}
+          onPointerCancel={resetGestureState}
         />
         <Card
           className={cn(
             "h-full w-full border shadow-[10px_10px_18px_rgba(163,177,198,0.2),-10px_-10px_18px_rgba(255,255,255,0.88)] transition-shadow hover:ring-2 hover:ring-primary/15 hover:ring-offset-1 active:cursor-grabbing",
             statusClass,
-            isDragging && "ring-2 ring-primary/30 ring-offset-2 shadow-lg",
+            gestureMode !== "idle" && "ring-2 ring-primary/30 ring-offset-2 shadow-lg",
           )}
+          onPointerDown={(event) => {
+            if (event.pointerType === "mouse" && event.button !== 0) return;
+            event.currentTarget.setPointerCapture(event.pointerId);
+            pressRef.current.pointerId = event.pointerId;
+            pressRef.current.startX = event.clientX;
+            pressRef.current.startY = event.clientY;
+            pressRef.current.longPressReady = !isMobile;
+            pressRef.current.blocked = false;
+            setGestureMode("press");
+            clearLongPressTimeout();
+            if (isMobile) {
+              longPressTimeoutRef.current = setTimeout(() => {
+                pressRef.current.longPressReady = true;
+              }, TOUCH_LONG_PRESS_MS);
+            }
+          }}
+          onPointerMove={(event) => {
+            if (event.pointerId !== pressRef.current.pointerId) return;
+            const deltaX = event.clientX - pressRef.current.startX;
+            const deltaY = event.clientY - pressRef.current.startY;
+            let nextMode = gestureMode;
+            if (nextMode === "press") {
+              if (!pressRef.current.longPressReady) {
+                if (Math.max(Math.abs(deltaX), Math.abs(deltaY)) > GESTURE_LOCK_PX) {
+                  pressRef.current.blocked = true;
+                  clearLongPressTimeout();
+                }
+                return;
+              }
+              if (Math.max(Math.abs(deltaX), Math.abs(deltaY)) < GESTURE_LOCK_PX) return;
+              if (Math.abs(deltaX) > Math.abs(deltaY) * AXIS_RATIO) {
+                nextMode = "move";
+                setGestureMode(nextMode);
+              } else if (Math.abs(deltaY) > Math.abs(deltaX) * AXIS_RATIO) {
+                nextMode = "reorder";
+                setGestureMode(nextMode);
+              } else {
+                return;
+              }
+            }
+            if (nextMode === "move") {
+              previewX.set(deltaX);
+            }
+            if (nextMode === "reorder") {
+              previewY.set(offsetY + index * GANTT_ROW_HEIGHT + deltaY);
+            }
+          }}
+          onPointerUp={(event) => {
+            if (event.pointerId !== pressRef.current.pointerId) return;
+            const deltaX = event.clientX - pressRef.current.startX;
+            const deltaY = event.clientY - pressRef.current.startY;
+            if (gestureMode === "move") {
+              commitMove(deltaX);
+            }
+            if (gestureMode === "reorder") {
+              commitReorder(deltaY);
+            }
+            resetGestureState();
+          }}
+          onPointerCancel={resetGestureState}
         >
           <div className="flex h-full items-center justify-between gap-3 px-6 py-2.5">
             <div className="min-w-0">
