@@ -48,14 +48,14 @@ export function Dashboard() {
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.7),transparent_48%),linear-gradient(135deg,rgba(255,255,255,0.1),rgba(216,226,239,0.06))]" />
           <div className="relative flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
             <div className="max-w-3xl space-y-3">
-              <div className="neo-badge">Neumorphic Planner</div>
+              <div className="neo-badge">Demo-first planner</div>
               <div className="space-y-2">
                 <h2 className="text-3xl font-semibold tracking-tight text-slate-700">
-                  Shape the roadmap before the real CSV lands.
+                  Demo mode opens first. Import CSV when ready.
                 </h2>
                 <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
-                  The first load now opens in demo mode with curated sample work.
-                  Upload a CSV whenever you want to replace it with imported tasks.
+                  The first load uses curated sample work. Upload a CSV to switch
+                  to imported tasks without changing the layout.
                 </p>
               </div>
             </div>

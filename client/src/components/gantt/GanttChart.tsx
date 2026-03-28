@@ -1,11 +1,13 @@
 import type { CSSProperties } from "react";
 import { useEffect, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { differenceInSeconds, format } from "date-fns";
 import html2canvas from "html2canvas";
 import type { Epic } from "@db/schema";
 import { Card } from "@/components/ui/card";
 import { Timeline } from "@/components/gantt/Timeline";
+import { useIsMobile } from "@/hooks/use-mobile";
 import {
   fetchJiraEpics,
   fetchJiraTasks,
@@ -28,12 +30,16 @@ import { GanttTaskList } from "@/components/gantt/GanttTaskList";
 import { GanttToolbar } from "@/components/gantt/GanttToolbar";
 import {
   buildInitialTaskOrder,
+  createTaskOrderStorageKey,
   createDefaultDateRange,
   createExportDateRange,
   getChartHeight,
   groupTasksByEpic,
   moveTaskWithinEpic,
+  readTaskOrderStorage,
+  syncTaskOrder,
   shiftDateRange,
+  writeTaskOrderStorage,
   zoomDateRange,
 } from "@/components/gantt/utils";
 import type { JiraTask } from "@/types/jira";
@@ -52,10 +58,12 @@ export function GanttChart() {
   const [zoom, setZoom] = useState(GANTT_ZOOM_DEFAULT);
   const [taskOrder, setTaskOrder] = useState<Record<number, number>>({});
   const [demoTasks, setDemoTasks] = useState(() => demoDataRef.current.tasks);
+  const [isExporting, setIsExporting] = useState(false);
   const [customProjectEndDate, setCustomProjectEndDate] = useState<
     Date | undefined
   >();
   const queryClient = useQueryClient();
+  const isMobile = useIsMobile();
 
   const {
     data: epicsData,
@@ -86,15 +94,37 @@ export function GanttChart() {
     tasks.length === 0;
   const activeEpics = usingDemoData ? demoDataRef.current.epics : epics;
   const activeTasks = usingDemoData ? demoTasks : tasks;
+  const taskOrderStorageKey = createTaskOrderStorageKey(
+    activeTasks,
+    usingDemoData ? "demo" : "imported",
+  );
 
   useEffect(() => {
-    if (activeTasks.length) {
-      setTaskOrder(buildInitialTaskOrder(activeTasks));
+    setTaskOrder((current) => {
+      if (!activeTasks.length) {
+        return {};
+      }
+
+      const savedOrder = readTaskOrderStorage(taskOrderStorageKey);
+      if (savedOrder && Object.keys(savedOrder).length > 0) {
+        return syncTaskOrder(savedOrder, activeTasks);
+      }
+
+      if (Object.keys(current).length === 0) {
+        return buildInitialTaskOrder(activeTasks);
+      }
+
+      return syncTaskOrder(current, activeTasks);
+    });
+  }, [activeTasks, taskOrderStorageKey]);
+
+  useEffect(() => {
+    if (!activeTasks.length || Object.keys(taskOrder).length === 0) {
       return;
     }
 
-    setTaskOrder({});
-  }, [activeTasks]);
+    writeTaskOrderStorage(taskOrderStorageKey, taskOrder);
+  }, [activeTasks.length, taskOrder, taskOrderStorageKey]);
 
   const updateTaskMutation = useMutation({
     mutationFn: async (data: {
@@ -119,6 +149,12 @@ export function GanttChart() {
       const taskEnd = new Date(task.endDate);
       return latest && latest > taskEnd ? latest : taskEnd;
     }, undefined);
+  const waitForNextPaint = () =>
+    new Promise<void>((resolve) => {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => resolve());
+      });
+    });
 
   return (
     <Card
@@ -152,6 +188,7 @@ export function GanttChart() {
 
         <GanttToolbar
           zoom={zoom}
+          isExporting={isExporting}
           taskCount={activeTasks.length}
           epicCount={activeEpics.length}
           modeLabel={usingDemoData ? "Demo timeline" : "Imported timeline"}
@@ -164,14 +201,19 @@ export function GanttChart() {
             setZoom(nextZoom);
           }}
           onExport={async () => {
+            if (isExporting) {
+              return;
+            }
+
             const exportDateRange = createExportDateRange(activeTasks);
             if (!exportDateRange || !exportRef.current) {
               return;
             }
 
             const previousDateRange = dateRange;
-            setDateRange(exportDateRange);
-            await new Promise((resolve) => setTimeout(resolve, 100));
+            setIsExporting(true);
+            flushSync(() => setDateRange(exportDateRange));
+            await waitForNextPaint();
 
             try {
               const canvas = await html2canvas(exportRef.current, {
@@ -194,7 +236,8 @@ export function GanttChart() {
             } catch (error) {
               console.error("Failed to export chart:", error);
             } finally {
-              setDateRange(previousDateRange);
+              flushSync(() => setDateRange(previousDateRange));
+              setIsExporting(false);
             }
           }}
         />
@@ -202,31 +245,45 @@ export function GanttChart() {
         <div className="neo-inset overflow-auto rounded-[28px] p-3 max-h-[var(--gantt-scroll-height)]">
           <div ref={exportRef} className="neo-grid rounded-[24px] p-3">
             <ResizablePanelGroup
-              direction="horizontal"
-              className="min-h-[var(--gantt-chart-min-height)]"
+              direction={isMobile ? "vertical" : "horizontal"}
+              className="min-h-[var(--gantt-chart-min-height)] items-stretch"
             >
               <ResizablePanel
-                defaultSize={25}
-                minSize={15}
-                maxSize={50}
-                className="pr-3"
+                defaultSize={isMobile ? 40 : 25}
+                minSize={isMobile ? 25 : 15}
+                maxSize={isMobile ? 60 : 50}
+                className={isMobile ? "pb-3" : "pr-3"}
               >
                 <div
-                  className="rounded-[20px] border border-white/45 bg-transparent"
+                  className="grid h-full grid-cols-[minmax(0,1fr)_4.75rem] items-center gap-x-3 rounded-[20px] border border-white/45 bg-transparent px-4 sm:grid-cols-[minmax(0,1fr)_7.5rem] sm:gap-x-5"
                   style={{ height: GANTT_HEADER_HEIGHT }}
-                />
+                >
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                    Ticket
+                  </p>
+                  <p className="text-right text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                    Status
+                  </p>
+                </div>
                 <GanttTaskList groups={groups} />
               </ResizablePanel>
 
-              <ResizableHandle withHandle className="h-auto" />
+              <ResizableHandle
+                withHandle
+                className={isMobile ? "my-1" : "mx-1 self-stretch"}
+              />
 
               <ResizablePanel
-                defaultSize={75}
-                className="overflow-hidden pl-3"
+                defaultSize={isMobile ? 60 : 75}
+                className={isMobile ? "pt-3" : "overflow-hidden pl-3"}
               >
                 <div
-                  className="neo-inset sticky top-0 z-10 rounded-[20px] border border-white/50 px-4"
-                  style={{ height: GANTT_HEADER_HEIGHT }}
+                  className="neo-inset z-10 rounded-[20px] border border-white/50 px-4"
+                  style={{
+                    height: GANTT_HEADER_HEIGHT,
+                    position: isExporting ? "relative" : "sticky",
+                    top: isExporting ? undefined : 0,
+                  }}
                 >
                   <Timeline
                     startDate={dateRange.start}
