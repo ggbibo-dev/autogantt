@@ -12,7 +12,7 @@ export function Header() {
             JIRA Gantt
           </h1>
           <p className="text-sm text-muted-foreground">
-            Soft-UI planning view for imported delivery work
+            Demo-first planning view for sample or imported delivery work
           </p>
         </div>
         <Link href="/settings">
