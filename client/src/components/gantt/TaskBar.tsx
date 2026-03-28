@@ -19,6 +19,7 @@ interface TaskBarProps {
   offsetY?: number;
   onUpdate: (startDate: Date, endDate: Date) => void;
   onOrderChange?: (newIndex: number) => void;
+  onEdit?: () => void;
 }
 
 const TASK_STATUS_STYLES: Record<string, string> = {
@@ -62,6 +63,7 @@ export function TaskBar({
   offsetY = 0,
   onUpdate,
   onOrderChange,
+  onEdit,
 }: TaskBarProps) {
   const barRef = useRef<HTMLDivElement>(null);
   const [start, setTaskStart] = useState(() => normalizeTaskDate(task.startDate, 0));
@@ -314,6 +316,9 @@ export function TaskBar({
             if (event.pointerId !== pressRef.current.pointerId) return;
             const deltaX = event.clientX - pressRef.current.startX;
             const deltaY = event.clientY - pressRef.current.startY;
+            if (gestureMode === "press" && !pressRef.current.blocked) {
+              onEdit?.();
+            }
             if (gestureMode === "move") {
               commitMove(deltaX);
             }
