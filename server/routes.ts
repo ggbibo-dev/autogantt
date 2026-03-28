@@ -3,7 +3,6 @@ import { db } from "db";
 import { editLogs, epics, jiraSettings, tasks } from "@db/schema";
 import { eq, desc } from "drizzle-orm";
 import { parse } from "csv-parse/sync";
-import { log } from "console";
 
 export function registerRoutes(app: Express) {
   // Epics
@@ -232,36 +231,48 @@ export function registerRoutes(app: Express) {
 
   app.put("/api/tasks/:id", async (req, res) => {
     const { id } = req.params;
-    const { startDate, endDate } = req.body;
+    const taskId = parseInt(id);
+    const { name, description, status, startDate, endDate } = req.body;
 
     // Fetch the current task
-    const [task] = await db.select().from(tasks).where(eq(tasks.id, parseInt(id)));
-
-    // // Update the task
-    // await db.update(tasks)
-    //   .set({ startDate, endDate })
-    //   .where(eq(tasks.id, id));
-
-    // Log the changes
-    if (task.startDate !== startDate) {
-      await db.insert(editLogs).values({
-        taskId: parseInt(id),
-        updatedField: "startDate",
-        oldValue: task.startDate.toISOString(),
-        newValue: startDate,
-        updatedAt: new Date(),
-      });
+    const [task] = await db.select().from(tasks).where(eq(tasks.id, taskId));
+    if (!task) {
+      res.status(404).json({ error: "Task not found" });
+      return;
     }
 
-    if (task.endDate !== endDate) {
+    const nextStartDate = startDate ? new Date(startDate) : task.startDate;
+    const nextEndDate = endDate ? new Date(endDate) : task.endDate;
+    const nextTask = {
+      name: name ?? task.name,
+      description: description ?? task.description,
+      status: status ?? task.status,
+      startDate: nextStartDate,
+      endDate: nextEndDate,
+    };
+
+    await db.update(tasks).set(nextTask).where(eq(tasks.id, taskId));
+
+    const updates = [
+      ["name", task.name, nextTask.name],
+      ["description", task.description, nextTask.description],
+      ["status", task.status, nextTask.status],
+      ["startDate", task.startDate.toISOString(), nextTask.startDate.toISOString()],
+      ["endDate", task.endDate.toISOString(), nextTask.endDate.toISOString()],
+    ] as const;
+
+    for (const [field, oldValue, newValue] of updates) {
+      if (oldValue === newValue) {
+        continue;
+      }
       await db.insert(editLogs).values({
-        taskId: parseInt(id),
-        updatedField: "endDate",
-        oldValue: task.endDate.toISOString(),
-        newValue: endDate,
+        taskId,
+        updatedField: field,
+        oldValue: oldValue ?? null,
+        newValue: newValue ?? null,
         updatedAt: new Date(),
       });
-    }
+    }    
 
     res.json({ success: true });
   });
