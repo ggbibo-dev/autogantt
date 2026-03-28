@@ -132,6 +132,23 @@
       -5px -5px 10px rgba(255, 255, 255, 0.82);
   }
 
+  .neo-target-badge {
+    @apply inline-flex items-center rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em];
+    color: #9f4f69;
+    background: linear-gradient(145deg, rgba(252, 245, 248, 0.96), rgba(239, 221, 229, 0.92));
+    border: 1px solid rgba(255, 255, 255, 0.7);
+    box-shadow:
+      5px 5px 10px rgba(185, 156, 168, 0.16),
+      -5px -5px 10px rgba(255, 255, 255, 0.8);
+  }
+
+  .neo-target-line {
+    background: linear-gradient(180deg, rgba(226, 150, 174, 0.82), rgba(191, 108, 139, 0.72));
+    box-shadow:
+      1px 0 0 rgba(255, 255, 255, 0.5),
+      0 0 0 1px rgba(233, 194, 208, 0.18);
+  }
+
   .neo-grid {
     background-image:
       linear-gradient(to right, rgba(177, 191, 214, 0.08) 1px, transparent 1px),
