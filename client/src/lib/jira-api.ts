@@ -1,6 +1,14 @@
 import type { Epic } from "@db/schema";
 import type { JiraSettings, JiraTask } from "@/types/jira";
 
+export interface TaskUpdateInput {
+  name?: string;
+  description?: string | null;
+  status?: string;
+  startDate?: Date;
+  endDate?: Date;
+}
+
 export async function syncWithJira(domain: string, apiToken: string, email: string) {
   const response = await fetch('/api/jira/sync', {
     method: 'POST',
@@ -40,10 +48,13 @@ export async function updateTaskDates(
   startDate: Date,
   endDate: Date,
 ): Promise<{ success: boolean }> {
-  const data = {
-    startDate: startDate,
-    endDate: endDate
-  };
+  return updateTask(taskId, { startDate, endDate });
+}
+
+export async function updateTask(
+  taskId: number,
+  data: TaskUpdateInput,
+): Promise<{ success: boolean }> {
   const response = await fetch(`/api/tasks/${taskId}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },

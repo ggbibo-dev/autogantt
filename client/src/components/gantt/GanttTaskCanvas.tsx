@@ -18,6 +18,7 @@ interface GanttTaskCanvasProps {
   onProjectEndDateChange: (newDate: Date) => void;
   onTaskUpdate: (taskId: number, startDate: Date, endDate: Date) => void;
   onTaskOrderChange: (task: JiraTask, newIndex: number) => void;
+  onTaskEdit: (task: JiraTask) => void;
 }
 
 export function GanttTaskCanvas({
@@ -29,6 +30,7 @@ export function GanttTaskCanvas({
   onProjectEndDateChange,
   onTaskUpdate,
   onTaskOrderChange,
+  onTaskEdit,
 }: GanttTaskCanvasProps) {
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -71,6 +73,7 @@ export function GanttTaskCanvas({
                 onTaskUpdate(task.id, nextStart, nextEnd)
               }
               onOrderChange={(newIndex) => onTaskOrderChange(task, newIndex)}
+              onEdit={() => onTaskEdit(task)}
             />
           ))}
         </div>

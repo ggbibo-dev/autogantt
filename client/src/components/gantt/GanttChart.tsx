@@ -9,7 +9,7 @@ import { Timeline } from "@/components/gantt/Timeline";
 import {
   fetchJiraEpics,
   fetchJiraTasks,
-  updateTaskDates,
+  updateTask,
 } from "@/lib/jira-api";
 import {
   ResizablePanel,
@@ -24,6 +24,7 @@ import {
 } from "@/components/gantt/constants";
 import { createDemoGanttData } from "@/components/gantt/demo-data";
 import { GanttTaskCanvas } from "@/components/gantt/GanttTaskCanvas";
+import { TaskEditDialog } from "@/components/gantt/TaskEditDialog";
 import { GanttTaskList } from "@/components/gantt/GanttTaskList";
 import { GanttToolbar } from "@/components/gantt/GanttToolbar";
 import {
@@ -52,6 +53,7 @@ export function GanttChart() {
   const [zoom, setZoom] = useState(GANTT_ZOOM_DEFAULT);
   const [taskOrder, setTaskOrder] = useState<Record<number, number>>({});
   const [demoTasks, setDemoTasks] = useState(() => demoDataRef.current.tasks);
+  const [editingTask, setEditingTask] = useState<JiraTask | null>(null);
   const [customProjectEndDate, setCustomProjectEndDate] = useState<
     Date | undefined
   >();
@@ -99,9 +101,8 @@ export function GanttChart() {
   const updateTaskMutation = useMutation({
     mutationFn: async (data: {
       taskId: number;
-      startDate: Date;
-      endDate: Date;
-    }) => updateTaskDates(data.taskId, data.startDate, data.endDate),
+      updates: Parameters<typeof updateTask>[1];
+    }) => updateTask(data.taskId, data.updates),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
     },
@@ -260,19 +261,61 @@ export function GanttChart() {
                       return;
                     }
 
-                    updateTaskMutation.mutate({ taskId, startDate, endDate });
+                    updateTaskMutation.mutate({
+                      taskId,
+                      updates: { startDate, endDate },
+                    });
                   }}
                   onTaskOrderChange={(task, newIndex) => {
                     setTaskOrder((current) =>
                       moveTaskWithinEpic(activeTasks, current, task.id, task.epicId, newIndex),
                     );
                   }}
+                  onTaskEdit={setEditingTask}
                 />
               </ResizablePanel>
             </ResizablePanelGroup>
           </div>
         </div>
       </div>
+
+      <TaskEditDialog
+        task={editingTask}
+        open={Boolean(editingTask)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setEditingTask(null);
+          }
+        }}
+        onSave={(updates) => {
+          if (!editingTask) {
+            return;
+          }
+
+          if (usingDemoData) {
+            setDemoTasks((current) =>
+              current.map((task) =>
+                task.id === editingTask.id
+                  ? {
+                      ...task,
+                      ...updates,
+                      originalStartDate: updates.startDate,
+                      originalEndDate: updates.endDate,
+                    }
+                  : task,
+              ),
+            );
+            setEditingTask(null);
+            return;
+          }
+
+          updateTaskMutation.mutate({
+            taskId: editingTask.id,
+            updates,
+          });
+          setEditingTask(null);
+        }}
+      />
     </Card>
   );
 }
