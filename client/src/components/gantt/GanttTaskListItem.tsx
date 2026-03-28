@@ -19,18 +19,18 @@ export function GanttTaskListItem({
       style={{ top, height }}
     >
       <div
-        className="grid h-full min-w-0 flex-1 grid-cols-[minmax(0,1fr)_7.5rem] items-stretch gap-x-5 rounded-[18px] border border-white/45 bg-transparent px-4"
+        className="grid h-full min-w-0 flex-1 grid-cols-[minmax(0,1fr)_4.75rem] items-stretch gap-x-3 rounded-[18px] border border-white/45 bg-transparent px-4 sm:grid-cols-[minmax(0,1fr)_7.5rem] sm:gap-x-5"
       >
         <div className="flex min-w-0 max-w-[34rem] flex-col justify-center gap-2 py-3">
           <p className="truncate text-sm font-semibold text-foreground">
             {task.name}
           </p>
-          <p className="truncate text-xs leading-5 text-muted-foreground">
+          <p className="line-clamp-2 text-xs leading-5 text-muted-foreground">
             {description}
           </p>
         </div>
         <div className="flex h-full items-center justify-end py-3">
-          <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+          <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground sm:text-[11px] sm:tracking-[0.18em]">
             {task.status}
           </span>
         </div>

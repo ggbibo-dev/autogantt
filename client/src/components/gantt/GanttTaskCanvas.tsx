@@ -50,7 +50,7 @@ export function GanttTaskCanvas({
       {groups.map((group) => (
         <div
           key={group.epic.id}
-          className="relative mb-4 rounded-[24px] bg-white/15 p-3 last:mb-0"
+          className="relative mb-4 rounded-[24px] bg-transparent p-3 last:mb-0"
           style={{ minHeight: getGroupHeight(group.tasks.length) }}
         >
           <div
