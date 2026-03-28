@@ -30,9 +30,12 @@ const TASK_STATUS_STYLES: Record<string, string> = {
   BLOCKED:
     "border-rose-200/80 bg-[linear-gradient(145deg,rgba(255,245,246,0.95),rgba(247,210,219,0.88))] text-rose-950",
 };
-const GESTURE_LOCK_PX = 10;
+const GESTURE_LOCK_PX = 12;
 const TOUCH_LONG_PRESS_MS = 180;
-const AXIS_RATIO = 1.15;
+const MOVE_AXIS_RATIO = 1.35;
+const REORDER_AXIS_RATIO = 1.35;
+const MOVE_DOMINANCE_PX = 10;
+const REORDER_DOMINANCE_PX = 10;
 
 type GestureMode =
   | "idle"
@@ -53,6 +56,28 @@ function getPercentOffset(value: Date, rangeStart: Date, rangeEnd: Date) {
   const secondsFromStart = differenceInSeconds(value, rangeStart);
 
   return (secondsFromStart / totalDuration) * 100;
+}
+
+function detectGestureIntent(
+  deltaX: number,
+  deltaY: number,
+): Extract<GestureMode, "move" | "reorder"> | null {
+  const absX = Math.abs(deltaX);
+  const absY = Math.abs(deltaY);
+
+  if (Math.max(absX, absY) < GESTURE_LOCK_PX) {
+    return null;
+  }
+
+  if (absX >= absY * MOVE_AXIS_RATIO && absX - absY >= MOVE_DOMINANCE_PX) {
+    return "move";
+  }
+
+  if (absY >= absX * REORDER_AXIS_RATIO && absY - absX >= REORDER_DOMINANCE_PX) {
+    return "reorder";
+  }
+
+  return null;
 }
 
 export function TaskBar({
@@ -306,16 +331,12 @@ export function TaskBar({
                 }
                 return;
               }
-              if (Math.max(Math.abs(deltaX), Math.abs(deltaY)) < GESTURE_LOCK_PX) return;
-              if (Math.abs(deltaX) > Math.abs(deltaY) * AXIS_RATIO) {
-                nextMode = "move";
-                setGestureMode(nextMode);
-              } else if (Math.abs(deltaY) > Math.abs(deltaX) * AXIS_RATIO) {
-                nextMode = "reorder";
-                setGestureMode(nextMode);
-              } else {
+              const intent = detectGestureIntent(deltaX, deltaY);
+              if (!intent) {
                 return;
               }
+              nextMode = intent;
+              setGestureMode(nextMode);
             }
             if (nextMode === "move") {
               previewX.set(deltaX);
