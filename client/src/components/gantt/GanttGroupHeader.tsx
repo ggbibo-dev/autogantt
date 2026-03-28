@@ -19,10 +19,10 @@ export function GanttGroupHeader({
       <div className="h-px flex-1 bg-white/45" />
       <div
         className={cn(
-          "rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em]",
+          "rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em]",
           variant === "list"
-            ? "border-white/60 bg-white/35 text-slate-600"
-            : "border-white/40 bg-white/20 text-slate-500",
+            ? "bg-white/28 text-slate-600"
+            : "bg-white/18 text-slate-500",
         )}
       >
         {title}
