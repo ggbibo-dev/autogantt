@@ -7,6 +7,7 @@ import {
   GANTT_ROW_HEIGHT,
   GANTT_SECONDS_IN_DAY,
 } from "@/components/gantt/constants";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import type { JiraTask } from "@/types/jira";
 
@@ -58,6 +59,8 @@ export function TaskBar({
   const [isResizing, setIsResizing] = useState(false);
   const startRef = useRef(start);
   const endRef = useRef(end);
+  const rowInset = Math.max(0, (GANTT_ROW_HEIGHT - GANTT_BAR_HEIGHT) / 2);
+  const isMobile = useIsMobile();
 
   const totalDuration = Math.max(1, differenceInSeconds(endDate, startDate));
   const rawLeft = getPercentOffset(start, startDate, endDate);
@@ -192,7 +195,7 @@ export function TaskBar({
 
         const containerRect = container.getBoundingClientRect();
         const elementRect = element.getBoundingClientRect();
-        const relativeY = elementRect.top - containerRect.top;
+        const relativeY = elementRect.top - containerRect.top - offsetY - rowInset;
         const nextIndex = Math.max(0, Math.round(relativeY / GANTT_ROW_HEIGHT));
 
         if (nextIndex !== index) {
@@ -209,7 +212,7 @@ export function TaskBar({
       }}
       animate={{
         left,
-        y: offsetY + index * GANTT_ROW_HEIGHT,
+        y: offsetY + rowInset + index * GANTT_ROW_HEIGHT,
       }}
       transition={{
         y: {
@@ -245,14 +248,16 @@ export function TaskBar({
             isDragging && "ring-2 ring-primary/30 ring-offset-2 shadow-lg",
           )}
         >
-          <div className="flex h-full items-center justify-between gap-3 px-6 py-2.5">
-            <div className="min-w-0">
-              <p className="truncate text-[13px] font-semibold leading-5">{task.name}</p>
-              <p className="mt-1.5 truncate text-[10px] uppercase tracking-[0.18em] text-slate-500">
-                {task.status}
-              </p>
+          {isMobile ? null : (
+            <div className="flex h-full items-center justify-between gap-3 px-6 py-2.5">
+              <div className="min-w-0">
+                <p className="truncate text-[13px] font-semibold leading-5">{task.name}</p>
+                <p className="mt-1.5 truncate text-[10px] uppercase tracking-[0.18em] text-slate-500">
+                  {task.status}
+                </p>
+              </div>
             </div>
-          </div>
+          )}
         </Card>
       </div>
     </motion.div>
