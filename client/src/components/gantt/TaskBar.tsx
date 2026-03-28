@@ -245,10 +245,10 @@ export function TaskBar({
             isDragging && "ring-2 ring-primary/30 ring-offset-2 shadow-lg",
           )}
         >
-          <div className="flex h-full items-center justify-between gap-3 px-5 py-2">
+          <div className="flex h-full items-center justify-between gap-3 px-6 py-2.5">
             <div className="min-w-0">
-              <p className="truncate text-sm font-semibold">{task.name}</p>
-              <p className="mt-1.5 truncate text-[11px] uppercase tracking-[0.18em] text-slate-500">
+              <p className="truncate text-[13px] font-semibold leading-5">{task.name}</p>
+              <p className="mt-1.5 truncate text-[10px] uppercase tracking-[0.18em] text-slate-500">
                 {task.status}
               </p>
             </div>
