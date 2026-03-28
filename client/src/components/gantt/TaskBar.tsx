@@ -70,6 +70,7 @@ export function TaskBar({
   const [end, setTaskEnd] = useState(() => normalizeTaskDate(task.endDate, 12));
   const startRef = useRef(start);
   const endRef = useRef(end);
+  const resizeOriginRef = useRef({ start, end });
   const pressRef = useRef({
     pointerId: -1,
     startX: 0,
@@ -104,6 +105,7 @@ export function TaskBar({
     setTaskEnd(taskEnd);
     startRef.current = taskStart;
     endRef.current = taskEnd;
+    resizeOriginRef.current = { start: taskStart, end: taskEnd };
   }, [task.endDate, task.startDate]);
 
   useEffect(() => {
@@ -167,22 +169,32 @@ export function TaskBar({
     event.currentTarget.setPointerCapture(event.pointerId);
     pressRef.current.pointerId = event.pointerId;
     pressRef.current.startX = event.clientX;
+    resizeOriginRef.current = {
+      start: startRef.current,
+      end: endRef.current,
+    };
     setGestureMode(direction === "left" ? "resize-left" : "resize-right");
   }
 
   function updateResizePreview(deltaX: number) {
     const daysDragged = deltaX / dayWidth;
     if (gestureMode === "resize-left") {
-      const nextStart = addSeconds(start, daysDragged * GANTT_SECONDS_IN_DAY);
-      if (nextStart < endRef.current) {
+      const nextStart = addSeconds(
+        resizeOriginRef.current.start,
+        daysDragged * GANTT_SECONDS_IN_DAY,
+      );
+      if (nextStart < resizeOriginRef.current.end) {
         setTaskStart(nextStart);
         startRef.current = nextStart;
       }
       return;
     }
     if (gestureMode === "resize-right") {
-      const nextEnd = addSeconds(end, daysDragged * GANTT_SECONDS_IN_DAY);
-      if (nextEnd > startRef.current) {
+      const nextEnd = addSeconds(
+        resizeOriginRef.current.end,
+        daysDragged * GANTT_SECONDS_IN_DAY,
+      );
+      if (nextEnd > resizeOriginRef.current.start) {
         setTaskEnd(nextEnd);
         endRef.current = nextEnd;
       }
