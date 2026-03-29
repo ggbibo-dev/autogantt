@@ -1,5 +1,4 @@
 import express, { type Request, Response, NextFunction } from "express";
-import { registerRoutes } from "./routes";
 import { setupVite, serveStatic } from "./vite";
 import { createServer } from "http";
 
@@ -49,7 +48,16 @@ app.use((req, res, next) => {
 });
 
 (async () => {
-  registerRoutes(app);
+  const hasDatabase = Boolean(process.env.DATABASE_URL);
+  const routesModule = hasDatabase
+    ? await import("./routes")
+    : await import("./demo-routes");
+
+  if (!hasDatabase) {
+    log("DATABASE_URL missing; serving demo-mode API routes");
+  }
+
+  routesModule.registerRoutes(app);
   const server = createServer(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
